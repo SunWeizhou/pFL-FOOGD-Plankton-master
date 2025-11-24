@@ -311,7 +311,8 @@ class FOOGD_Module(nn.Module):
         训练时: features 是原始图像特征, features_aug 是增强图像特征
         """
         # 1. OOD 检测分数 (测试时用)
-        ood_scores = torch.norm(self.score_model(features), dim=1)
+        # 分数越高表示越是ID样本，越低表示越是OOD样本
+        ood_scores = -torch.norm(self.score_model(features), dim=1)
 
         # 2. SM3D 损失 (训练时用) - 用于优化 Score Model
         sm_loss = self.compute_sm3d_loss(features)

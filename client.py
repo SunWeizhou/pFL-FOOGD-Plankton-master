@@ -41,8 +41,8 @@ class FLClient:
         )
 
         # 损失权重
-        self.lambda_ksd = 0.1  # KSD损失权重
-        self.lambda_sm = 0.1   # 评分匹配损失权重
+        self.lambda_ksd = 0.01  # KSD损失权重
+        self.lambda_sm = 0.01   # 评分匹配损失权重
 
         # 数据增强变换
         self._setup_augmentations()
@@ -82,67 +82,82 @@ class FLClient:
 
         return torch.stack(augmented_images).to(images.device)
 
-    def train_step(self, local_epochs=1):
-        """
-        客户端本地训练
-
-        Args:
-            local_epochs: 本地训练轮数
-
-        Returns:
-            local_updates: 本地模型更新
-            train_loss: 训练损失
-        """
+     def train_step(self, local_epochs=1):
         self.model.train()
         if self.foogd_module:
             self.foogd_module.train()
 
         total_loss = 0.0
         total_samples = 0
+        
+        # [Debug] 用于记录分项 Loss，看看是谁在捣乱
+        epoch_log = {'cls': 0.0, 'ksd': 0.0, 'sm': 0.0}
 
         for epoch in range(local_epochs):
             for batch_idx, (data, targets) in enumerate(self.train_loader):
                 data, targets = data.to(self.device), targets.to(self.device)
 
-                # 数据增强 - 为SAG生成增强特征
-                # 弱增强：原始数据
-                # 强增强：随机裁剪、颜色抖动等
+                # 1. 数据增强
                 data_aug = self._apply_strong_augmentation(data)
 
-                # 前向传播
+                # 2. 前向传播
                 logits_g, logits_p, features = self.model(data)
                 _, _, features_aug = self.model(data_aug)
-                # === [关键修改] 特征归一化 ===
-                # 将特征投影到单位球面上，这对计算距离度量（KSD/RBF）至关重要
+
+                # 3. 特征归一化 (防止 KSD 爆炸的关键)
                 features_norm = F.normalize(features, p=2, dim=1)
                 features_aug_norm = F.normalize(features_aug, p=2, dim=1)
 
-                # 计算分类损失
+                # 4. 计算分类损失
                 loss_g = F.cross_entropy(logits_g, targets)
                 loss_p = F.cross_entropy(logits_p, targets)
                 classification_loss = loss_g + loss_p
 
-                # 计算FOOGD损失
-                foogd_loss = 0.0
+                # 5. 计算 FOOGD 损失
+                foogd_loss = torch.tensor(0.0).to(self.device)
+                ksd_loss_val = 0.0
+                sm_loss_val = 0.0
+                
                 if self.foogd_module:
-                    # 新的FOOGD接口需要原始特征和增强特征
                     ksd_loss, sm_loss, _ = self.foogd_module(features_norm, features_aug_norm)
+                    # [关键调整] 降低权重，防止主导训练
+                    # 建议先设得很小，跑通分类再说
                     foogd_loss = self.lambda_ksd * ksd_loss + self.lambda_sm * sm_loss
+                    
+                    ksd_loss_val = ksd_loss.item()
+                    sm_loss_val = sm_loss.item()
 
                 # 总损失
                 total_batch_loss = classification_loss + foogd_loss
 
-                # 反向传播
+                # 6. 反向传播与梯度裁剪
                 self.optimizer.zero_grad()
                 total_batch_loss.backward()
+                
+                # [新增] 梯度裁剪：防止 NaN 的核武器
+                # max_norm 通常设为 1.0 或 5.0
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=5.0)
+                if self.foogd_module:
+                    torch.nn.utils.clip_grad_norm_(self.foogd_module.parameters(), max_norm=5.0)
+                
                 self.optimizer.step()
 
-                total_loss += total_batch_loss.item() * data.size(0)
-                total_samples += data.size(0)
+                # 记录数据
+                batch_size = data.size(0)
+                total_loss += total_batch_loss.item() * batch_size
+                total_samples += batch_size
+                
+                epoch_log['cls'] += classification_loss.item() * batch_size
+                epoch_log['ksd'] += ksd_loss_val * batch_size
+                epoch_log['sm'] += sm_loss_val * batch_size
+
+        # 打印调试信息 (只打印第一个 epoch 的平均值)
+        if total_samples > 0:
+            print(f"  [Debug] Cls: {epoch_log['cls']/total_samples:.4f} | "
+                  f"KSD: {epoch_log['ksd']/total_samples:.4f} | "
+                  f"SM: {epoch_log['sm']/total_samples:.4f}")
 
         avg_loss = total_loss / total_samples if total_samples > 0 else 0.0
-
-        # 获取通用参数（服务器聚合的部分）
         generic_params = self.get_generic_parameters()
 
         return generic_params, avg_loss
