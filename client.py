@@ -121,7 +121,7 @@ class FLClient:
         total_loss = 0.0
         total_samples = 0
         
-        # [Debug] 用于记录分项 Loss，看看是谁在捣乱
+        # 用于记录分项 Loss
         epoch_log = {'cls': 0.0, 'ksd': 0.0, 'sm': 0.0}
 
         for epoch in range(local_epochs):
@@ -182,9 +182,9 @@ class FLClient:
                 epoch_log['ksd'] += ksd_loss_val * batch_size
                 epoch_log['sm'] += sm_loss_val * batch_size
 
-        # 打印调试信息 (只打印第一个 epoch 的平均值)
+        # 打印分项损失信息 (只打印第一个 epoch 的平均值)
         if total_samples > 0:
-            print(f"  [Debug] Cls: {epoch_log['cls']/total_samples:.4f} | "
+            print(f"  Cls: {epoch_log['cls']/total_samples:.4f} | "
                   f"KSD: {epoch_log['ksd']/total_samples:.4f} | "
                   f"SM: {epoch_log['sm']/total_samples:.4f}")
 
