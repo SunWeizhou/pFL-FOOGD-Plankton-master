@@ -16,7 +16,7 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, List, Tuple
-
+import torch.nn.functional as F
 
 def evaluate_id_performance(model, data_loader, device, num_classes=54):
     """
