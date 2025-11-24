@@ -49,7 +49,11 @@ class FLClient:
 
     def _setup_augmentations(self):
         """设置数据增强变换"""
-        # 强增强：用于SAG的增强特征
+        # 定义反归一化 (用于将 Tensor 还原回 [0,1] 范围，以便转 PIL)
+        self.mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1).to(self.device)
+        self.std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1).to(self.device)
+
+        # 强增强流程
         self.strong_augmentation = transforms.Compose([
             transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
             transforms.RandomHorizontalFlip(p=0.5),
@@ -57,27 +61,36 @@ class FLClient:
             transforms.RandomGrayscale(p=0.2),
             transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
             transforms.ToTensor(),
+            # [关键修正] 强增强后必须重新归一化！
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
     def _apply_strong_augmentation(self, images):
         """
         应用强数据增强
-
         Args:
-            images: 原始图像张量 [batch_size, 3, height, width]
-
-        Returns:
-            augmented_images: 增强后的图像张量
+            images: 归一化后的原始图像张量 [batch_size, 3, height, width]
         """
-        import torchvision.transforms as transforms
         batch_size = images.size(0)
         augmented_images = []
 
+        # 确保反归一化参数在正确设备上
+        if self.mean.device != images.device:
+            self.mean = self.mean.to(images.device)
+            self.std = self.std.to(images.device)
+
         for i in range(batch_size):
-            # 将张量转换回PIL图像进行增强
-            img = transforms.ToPILImage()(images[i])
-            # 应用强增强
-            img_aug = self.strong_augmentation(img)
+            # 1. [关键修正] 先反归一化 (Un-normalize)，恢复到 [0, 1] 甚至略微越界
+            # img = images[i] * std + mean
+            img_unnorm = images[i] * self.std + self.mean
+            # 截断到 [0, 1] 范围以防万一
+            img_unnorm = torch.clamp(img_unnorm, 0, 1)
+
+            # 2. 转 PIL
+            img_pil = transforms.ToPILImage()(img_unnorm)
+
+            # 3. 应用强增强 (内部包含 ToTensor 和 Normalize)
+            img_aug = self.strong_augmentation(img_pil)
             augmented_images.append(img_aug)
 
         return torch.stack(augmented_images).to(images.device)

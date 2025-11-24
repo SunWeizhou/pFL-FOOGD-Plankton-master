@@ -90,8 +90,10 @@ class FLServer:
                 _, _, features = self.global_model(data)
 
                 if self.foogd_module:
-                    # 正确：使用 FOOGD 模块计算分数 (Score Norm)
-                    _, _, scores = self.foogd_module(features)
+                    # [修正] 必须先归一化，与训练时保持一致！
+                    features_norm = F.normalize(features, p=2, dim=1)
+                    # 使用归一化后的特征计算分数
+                    _, _, scores = self.foogd_module(features_norm)
                 else:
                     # 退化：使用特征范数
                     scores = torch.norm(features, dim=1)

@@ -169,10 +169,12 @@ def compute_ood_scores(model, foogd_module, data_loader, device):
             _, _, features = model(data)
 
             if foogd_module:
-                # 使用FOOGD模块计算OOD分数
-                _, _, scores = foogd_module(features)
+                # [修正] 必须先归一化，与训练时保持一致！
+                features_norm = F.normalize(features, p=2, dim=1)
+                # 使用归一化后的特征计算分数
+                _, _, scores = foogd_module(features_norm)
             else:
-                # 使用特征范数作为OOD分数
+                # 如果没有 FOOGD，使用特征范数
                 scores = torch.norm(features, dim=1)
 
             all_scores.extend(scores.cpu().numpy())
