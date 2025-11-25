@@ -223,46 +223,48 @@ class FOOGD_Module(nn.Module):
 
     def compute_ksd_loss(self, z, z_aug):
         """
-        [关键修复] 计算 KSD 损失
-        1. 必须移除外层的 torch.no_grad()，否则骨干网络收不到梯度！
-        2. 必须对 score_model 的输出做 detach，防止更新 Score Model。
+        修正版：计算 KSD(p(z), q(z_aug))
+        目标：优化 Feature Extractor，使得 z_aug 落在 p(z) 的高密度区域
         """
-        # 1. 获取 Score (作为裁判，不参与训练，所以要 detach)
-        scores = self.score_model(z).detach()
-        score_aug = self.score_model(z_aug).detach()
 
-        # 2. 计算 Kernel (涉及 z，需要保留梯度！)
-        features = z
+        # 1. 关键修改：操作对象必须是【增强特征 z_aug】
+        features = z_aug 
+
+        # 2. Score Model 作为 Critic，不需要更新它，所以 detach
+        # 但它需要对 features (z_aug) 进行打分
+        # 注意：论文 Eq. 11 中 s_theta(z_hat) 是 score function
+        scores = self.score_model(features).detach()
+
+        #    3. 计算 Kernel (在增强特征之间计算)
+        # features (即 z_aug) 需要保留梯度，以便反向传播更新 Backbone
         K_xx, sigma = self.rbf_kernel_matrix(features, features)
 
-        # 3. 计算 KSD 各项
-        # Term 1
+        # --- 以下计算逻辑保持不变，但现在的 'features' 和 'scores' 对应的是 z_aug ---
+
+        # Term 1: s(x)^T s(x') * k(x,x')
         term1 = torch.matmul(scores, scores.t()) * K_xx
 
-        # 辅助变量
-        B = features.size(0)
-        # X_diff 形状: [Batch(i), Batch(j), Dim(d)] -> [32, 32, 1664]
+        # 辅助变量: (x_i - x_j)
+        # [B, B, Dim]
         X_diff = features.unsqueeze(1) - features.unsqueeze(0)
 
-        # [修复 Term 2]
-        # 原始错误写法: 'bi, bij -> bj'
-        # 正确含义: scores[i, d] * X_diff[i, j, d] -> 结果[i, j]
-        # 说明: 计算当前样本 i 的 score 与 (x_i - x_j) 的点积
-        term2 = torch.einsum('id, ijd -> ij', scores, X_diff) * K_xx / (sigma**2 + 1e-8)
-
-        # [修复 Term 3]
-        # 原始错误写法: 'bj, bij -> bi'
-        # 正确含义: scores[j, d] * X_diff[i, j, d] -> 结果[i, j]
-        # 说明: 计算对方样本 j 的 score 与 (x_i - x_j) 的点积
-        # 注意：这里有一个负号，因为公式是 (x - x')，如果交换顺序会有符号变化，保持原逻辑即可
-        term3 = -torch.einsum('jd, ijd -> ij', scores, X_diff) * K_xx / (sigma**2 + 1e-8)
-
-        # Term 4
+        # Term 2: s(x)^T * grad_x' k(x,x')
+        # grad_x' k = 1/sigma^2 * (x-x') * k
+        # 注意：这里的 scores 是 score(z_aug)
+        term2 = torch.einsum('bi, bij -> bj', scores, X_diff) * K_xx / (sigma**2 + 1e-8)
+    
+        # Term 3: s(x')^T * grad_x k(x,x')
+        # grad_x k = -1/sigma^2 * (x-x') * k
+        term3 = -torch.einsum('bj, bij -> bi', scores, X_diff) * K_xx / (sigma**2 + 1e-8)
+    
+        # Term 4: trace(grad_x grad_x' k)
         dim = features.size(1)
         sq_dist = torch.sum(X_diff**2, dim=2)
         term4 = (dim / (sigma**2) - sq_dist / (sigma**4)) * K_xx
+        
+        # 最终取平均
+        ksd = (term1 + term2 + term3 + term4).mean()
 
-        ksd = (term1 + term2 + term3 + term4).mean() / self.feature_dim
         return ksd
 
     def forward(self, features, features_aug=None):

@@ -55,25 +55,35 @@ class FLServer:
              print(f"  [Server] Updated FOOGD Module with {len(foogd_params)} params")
 
     def aggregate(self, updates, sample_sizes):
-        """聚合 - 修复版"""
+        """
+        聚合函数 - [已修正] 恢复 BN 统计量的聚合
+        """
         total_samples = sum(sample_sizes)
-        # 初始化聚合参数
+        # 1. 初始化聚合参数为第一个客户端的参数副本
         aggregated_params = copy.deepcopy(updates[0])
 
         for key in aggregated_params.keys():
-            # [新增] 过滤掉 BN 的统计量，不进行聚合
-            # 只聚合权重 (weight) 和偏置 (bias)
-            if 'running_mean' in key or 'running_var' in key or 'num_batches_tracked' in key:
+            # [关键修改]：
+            # 我们只跳过 'num_batches_tracked' (它是整数，记录训练步数，不需要平均)
+            # 删除了之前过滤 'running_mean' 和 'running_var' 的逻辑
+            if 'num_batches_tracked' in key:
                 continue
 
+            # 2. 准备进行加权平均
+            # 先将当前参数置为 0
+            # 注意：这里我们假设参数都是 Tensor 类型
             aggregated_params[key] = torch.zeros_like(aggregated_params[key], dtype=torch.float)
 
             for update, n_samples in zip(updates, sample_sizes):
                 weight = n_samples / total_samples
-                # 确保数据类型一致
+
                 param_data = update[key]
+
+                # 确保参与计算的数据是 float 类型
                 if param_data.dtype != torch.float:
                     param_data = param_data.float()
+
+                # 加权累加
                 aggregated_params[key] += param_data * weight
 
         return aggregated_params

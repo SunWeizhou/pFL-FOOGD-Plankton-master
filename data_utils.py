@@ -334,7 +334,7 @@ class Corruptions:
         # severity 1-5 控制模糊程度
         kernel_sizes = [3, 5, 7, 9, 11]
         k = kernel_sizes[min(severity-1, 4)]
-        return transforms.GaussianBlur(kernel_size=k, sigma=(0.1, 2.0))(img)
+        return transforms.GaussianBlur(kernel_size=k, sigma=1.0)(img)
 
     @staticmethod
     def brightness(img, severity=1):

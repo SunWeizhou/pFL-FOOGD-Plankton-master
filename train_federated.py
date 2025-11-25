@@ -177,19 +177,48 @@ def federated_training(args):
         for client in clients:
             client.set_generic_parameters(server.get_global_parameters())
 
-        # 评估全局模型
+        # === 评估阶段 (修改后) ===
         if (round_num + 1) % args.eval_frequency == 0 or round_num == args.communication_rounds - 1:
-            print("\n评估全局模型...")
+            print("\n评估模型...")
 
-            # [修改] 传入 inc_loader
+            # 1. 评估 Server 端的 Global Model (主要看 head_g 和 OOD 检测)
+            # 注意：这里的 metrics['id_accuracy'] 是 head_g 的准确率
             test_metrics = server.evaluate_global_model(
                 test_loader, near_ood_loader, far_ood_loader, inc_loader
             )
 
-            # 更新历史
+            # 2. [新增] 评估所有 Client 的 Local Model (主要看 head_p)
+            # 我们需要遍历客户端，让它们在测试集上跑一遍，然后计算平均准确率
+            client_acc_p_list = []
+            client_acc_g_list = []
+
+            # 为了节省时间，如果是测试集很大，可以选择部分客户端评估，或者全部评估
+            print(f"  正在评估 {len(clients)} 个客户端的个性化性能...")
+            for client in clients:
+                # 注意：为了公平对比，这里 client 应该使用 test_loader (全局测试集)
+                # 在论文标准设定中，通常是"所有客户端在全局测试集上的平均准确率"
+                # 或者"客户端在自己本地测试集上的准确率"。
+                # 由于你目前只有全局 test_loader，我们先用这个。
+                c_metrics = client.evaluate(test_loader)
+                client_acc_p_list.append(c_metrics['acc_p'])
+                client_acc_g_list.append(c_metrics['acc_g'])
+
+            avg_acc_p = sum(client_acc_p_list) / len(client_acc_p_list)
+            avg_acc_g_local = sum(client_acc_g_list) / len(client_acc_g_list)
+
+            # 更新历史记录
             training_history['rounds'].append(round_num + 1)
-            training_history['train_losses'].append(round_train_loss / len(selected_clients))
+            # 记录 Server 端的 head_g
             training_history['test_accuracies'].append(test_metrics['id_accuracy'])
+            # [建议新增] 记录 Average Personal Accuracy
+            training_history.setdefault('avg_person_acc', []).append(avg_acc_p)
+
+            print(f"  [Server] Global Head-G ID准确率: {test_metrics['id_accuracy']:.4f}")
+            print(f"  [Clients] Average Head-P ID准确率: {avg_acc_p:.4f} (这是个性化性能的关键指标!)")
+            print(f"  [Clients] Average Head-G ID准确率: {avg_acc_g_local:.4f}")
+
+            # 原有记录逻辑保持不变
+            training_history['train_losses'].append(round_train_loss / len(selected_clients))
             training_history['test_losses'].append(test_metrics['id_loss'])
 
             if 'near_auroc' in test_metrics:
@@ -206,7 +235,6 @@ def federated_training(args):
                 print(f"  准确率下降 (Drop): {test_metrics['id_accuracy'] - acc:.4f}")
 
             # 打印评估结果
-            print(f"  ID准确率: {test_metrics['id_accuracy']:.4f}")
             print(f"  ID损失: {test_metrics['id_loss']:.4f}")
             if 'near_auroc' in test_metrics:
                 print(f"  Near-OOD AUROC: {test_metrics['near_auroc']:.4f}")
@@ -270,13 +298,15 @@ def plot_training_curves(history, output_dir):
 
     # 准确率曲线
     plt.subplot(2, 2, 2)
-    plt.plot(history['rounds'], history['test_accuracies'], 'g-', label='Test Accuracy')
+    plt.plot(history['rounds'], history['test_accuracies'], 'g-', label='Global Head-G Accuracy')
+    if 'avg_person_acc' in history and history['avg_person_acc']:
+        plt.plot(history['rounds'], history['avg_person_acc'], 'm-', label='Avg Head-P Accuracy')
     if history['inc_accuracies']:
         plt.plot(history['rounds'], history['inc_accuracies'], 'c-', label='IN-C Accuracy')
     plt.xlabel('Communication Rounds')
     plt.ylabel('Accuracy')
     plt.legend()
-    plt.title('Test Accuracy (ID vs IN-C)')
+    plt.title('Test Accuracy (Global vs Personal vs IN-C)')
 
     # OOD检测性能
     if history['near_auroc']:
@@ -353,7 +383,12 @@ def main():
     print("\n=== 训练完成 ===")
     if training_history['test_accuracies']:
         final_acc = training_history['test_accuracies'][-1]
-        print(f"最终测试准确率: {final_acc:.4f}")
+        print(f"最终全局准确率 (Head-G): {final_acc:.4f}")
+
+    if 'avg_person_acc' in training_history and training_history['avg_person_acc']:
+        final_person_acc = training_history['avg_person_acc'][-1]
+        print(f"最终个性化准确率 (Head-P): {final_person_acc:.4f}")
+        print(f"个性化增益: {final_person_acc - final_acc:.4f}")
 
     if training_history['inc_accuracies']:
         final_inc_acc = training_history['inc_accuracies'][-1]

@@ -267,19 +267,15 @@ class FLClient:
 
     def evaluate(self, test_loader):
         """
-        在本地数据上评估模型
-
-        Args:
-            test_loader: 测试数据加载器
-
-        Returns:
-            accuracy: 准确率
-            loss: 平均损失
+        在测试集上评估模型
+        返回:
+            metrics: 包含 accuracy_g, accuracy_p, loss 的字典
         """
         self.model.eval()
 
         total_loss = 0.0
-        correct = 0
+        correct_g = 0
+        correct_p = 0  # [新增] 记录 head_p 的正确数
         total_samples = 0
 
         with torch.no_grad():
@@ -287,21 +283,34 @@ class FLClient:
                 data, targets = data.to(self.device), targets.to(self.device)
 
                 logits_g, logits_p, _ = self.model(data)
+
+                # 计算 Loss (这里保持原样，或者你可以只返回分类 Loss)
                 loss_g = F.cross_entropy(logits_g, targets)
                 loss_p = F.cross_entropy(logits_p, targets)
                 loss = (loss_g + loss_p) / 2
-
                 total_loss += loss.item() * data.size(0)
 
-                # 使用通用头进行预测
-                _, predicted = torch.max(logits_g, 1)
-                correct += (predicted == targets).sum().item()
+                # [原有] 计算 head_g 准确率
+                _, pred_g = torch.max(logits_g, 1)
+                correct_g += (pred_g == targets).sum().item()
+
+                # [新增] 计算 head_p 准确率
+                _, pred_p = torch.max(logits_p, 1)
+                correct_p += (pred_p == targets).sum().item()
+
                 total_samples += data.size(0)
 
-        accuracy = correct / total_samples if total_samples > 0 else 0.0
+        # 计算平均指标
         avg_loss = total_loss / total_samples if total_samples > 0 else 0.0
+        acc_g = correct_g / total_samples if total_samples > 0 else 0.0
+        acc_p = correct_p / total_samples if total_samples > 0 else 0.0 # [新增]
 
-        return accuracy, avg_loss
+        # 返回字典更清晰
+        return {
+            'loss': avg_loss,
+            'acc_g': acc_g,
+            'acc_p': acc_p
+        }
 
     def compute_ood_scores(self, data_loader):
         """
@@ -381,8 +390,9 @@ if __name__ == "__main__":
 
     # 测试评估
     print("\n测试客户端评估...")
-    accuracy, eval_loss = client.evaluate(client_loaders[0])
-    print(f"评估准确率: {accuracy:.4f}")
-    print(f"评估损失: {eval_loss:.4f}")
+    eval_metrics = client.evaluate(client_loaders[0])
+    print(f"通用头准确率: {eval_metrics['acc_g']:.4f}")
+    print(f"个性化头准确率: {eval_metrics['acc_p']:.4f}")
+    print(f"评估损失: {eval_metrics['loss']:.4f}")
 
     print("客户端测试完成!")
