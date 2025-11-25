@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
+from torchvision.models import DenseNet121_Weights, DenseNet169_Weights
 
 
 class DenseNetBackbone(nn.Module):
@@ -26,11 +27,15 @@ class DenseNetBackbone(nn.Module):
         """
         super(DenseNetBackbone, self).__init__()
 
+        # 根据 pretrained 参数决定使用什么权重
+        weights_121 = DenseNet121_Weights.DEFAULT if pretrained else None
+        weights_169 = DenseNet169_Weights.DEFAULT if pretrained else None
+
         if model_type == 'densenet121':
-            self.backbone = models.densenet121(pretrained=pretrained)
+            self.backbone = models.densenet121(weights=weights_121)
             self.feature_dim = 1024
         elif model_type == 'densenet169':
-            self.backbone = models.densenet169(pretrained=pretrained)
+            self.backbone = models.densenet169(weights=weights_169)
             self.feature_dim = 1664
         else:
             raise ValueError(f"Unsupported model type: {model_type}")

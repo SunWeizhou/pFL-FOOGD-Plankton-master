@@ -12,8 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import copy
 import torchvision.transforms as transforms
-# 引入 amp
-from torch.cuda.amp import autocast, GradScaler
+# AMP 功能已集成到 torch.amp 中，无需单独导入
 
 
 class FLClient:
@@ -66,8 +65,8 @@ class FLClient:
         self.mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1).to(self.device)
         self.std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1).to(self.device)
 
-        # [新增] 初始化 GradScaler
-        self.scaler = GradScaler()
+        # [新增] 初始化 GradScaler (PyTorch 2.0+ API)
+        self.scaler = torch.amp.GradScaler('cuda')
 
     def _fourier_augmentation(self, images, beta=None):
         """
@@ -144,8 +143,8 @@ class FLClient:
 
                 self.optimizer.zero_grad()
 
-                # [修改] 使用 autocast 上下文管理器
-                with autocast():
+                # [修改] 使用 autocast 上下文管理器 (PyTorch 2.0+ API)
+                with torch.amp.autocast('cuda'):
                     # 1. 数据增强 (仅使用傅里叶增强)
                     data_aug = self._apply_hybrid_augmentation(data)
 
