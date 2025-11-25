@@ -204,13 +204,14 @@ class FOOGD_Module(nn.Module):
         # target = -noise / sigma^2
         score_true = -noise / (sigma ** 2)
 
-        # [核心修正 1] 计算未归一化的 Sum Loss
-        # 使用 sum reduction 避免特征维度 (1664) 导致的梯度稀释
-        raw_dsm_loss = 0.5 * F.mse_loss(score_pred, score_true, reduction='sum') / batch_size
+        # [修改] 使用 'mean' 而不是 'sum'，让数值对 Batch Size 不敏感
+        # score_pred, score_true 形状是 [B, 1664]
+        # mean 会除以 (B * 1664)，数值会变得很小
+        raw_dsm_loss = 0.5 * F.mse_loss(score_pred, score_true, reduction='mean')
 
-        # [核心修正 2] 加上 sigma^2 权重 (Variance Reduction)
-        # 这一步将 Loss 的量级从 ~50 拉回到 ~0.5，极大地稳定梯度
-        l_dsm = raw_dsm_loss * (sigma ** 2)
+        # [修改] 为了让 Loss 数值好看一点（不至于变成 0.00001），我们手动乘一个系数
+        # 1664 是特征维度，乘回去相当于只对 Batch 做平均
+        l_dsm = raw_dsm_loss * (self.feature_dim) * (sigma ** 2)
 
         # --- Part B: MMD (保持不变) ---
         z_gen = self.langevin_dynamic_sampling(batch_size, features.device)

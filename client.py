@@ -56,13 +56,13 @@ class FLClient:
             )
 
         # 损失权重
-        self.lambda_ksd = 0.1  # KSD损失权重
-        self.lambda_sm = 0.005   # 评分匹配损失权重
+        self.lambda_ksd = 0.01  # KSD损失权重
+        self.lambda_sm = 0.1   # 评分匹配损失权重
 
         # 傅里叶增强参数
         self.use_fourier_aug = True  # 是否使用傅里叶增强
-        self.fourier_beta = 0.15     # 幅度谱混合比例
-        self.fourier_prob = 0.5      # 使用傅里叶增强的概率
+        self.fourier_beta = 0.4     # 幅度谱混合比例
+        self.fourier_prob = 0.9      # 使用傅里叶增强的概率
 
         # 反归一化参数 (用于傅里叶增强)
         self.mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1).to(self.device)
