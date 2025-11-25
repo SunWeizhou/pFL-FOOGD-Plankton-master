@@ -61,9 +61,9 @@ class FLServer:
         aggregated_params = copy.deepcopy(updates[0])
 
         for key in aggregated_params.keys():
-            # 针对 LongTensor (如 num_batches_tracked) 需要特殊处理或忽略
-            if 'num_batches_tracked' in key:
-                # 这种统计量通常取第一个客户端的即可，或者取最大值
+            # [新增] 过滤掉 BN 的统计量，不进行聚合
+            # 只聚合权重 (weight) 和偏置 (bias)
+            if 'running_mean' in key or 'running_var' in key or 'num_batches_tracked' in key:
                 continue
 
             aggregated_params[key] = torch.zeros_like(aggregated_params[key], dtype=torch.float)

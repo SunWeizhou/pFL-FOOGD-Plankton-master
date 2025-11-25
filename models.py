@@ -204,14 +204,13 @@ class FOOGD_Module(nn.Module):
         # target = -noise / sigma^2
         score_true = -noise / (sigma ** 2)
 
-        # [修改] 使用 'mean' 而不是 'sum'，让数值对 Batch Size 不敏感
-        # score_pred, score_true 形状是 [B, 1664]
-        # mean 会除以 (B * 1664)，数值会变得很小
+        # 1. 计算 Mean MSE (数值约为 50)
         raw_dsm_loss = 0.5 * F.mse_loss(score_pred, score_true, reduction='mean')
 
-        # [修改] 为了让 Loss 数值好看一点（不至于变成 0.00001），我们手动乘一个系数
-        # 1664 是特征维度，乘回去相当于只对 Batch 做平均
-        l_dsm = raw_dsm_loss * (self.feature_dim) * (sigma ** 2)
+        # 2. [修正] 只乘 sigma^2，不要乘 feature_dim
+        # 这样可以将 Loss 缩放到 0.5 左右 (50 * 0.01 = 0.5)
+        # 这与 Classification Loss (0.5~2.0) 是完全匹配的！
+        l_dsm = raw_dsm_loss * (sigma ** 2)
 
         # --- Part B: MMD (保持不变) ---
         z_gen = self.langevin_dynamic_sampling(batch_size, features.device)
