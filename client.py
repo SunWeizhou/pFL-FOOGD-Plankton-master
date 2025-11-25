@@ -39,21 +39,24 @@ class FLClient:
         # [删除或注释掉] 原来的 Adam
         # self.optimizer = torch.optim.Adam(...)
 
-        # [修复] 确保包含 FOOGD 参数
-        params = list(self.model.parameters())
-        if self.foogd_module:
-            params += list(self.foogd_module.parameters())
-
-        # [新增] 使用 SGD，这是 FedAvg/FedRoD 的标配
-        self.optimizer = torch.optim.SGD(
-            params,
-            lr=0.01,          # SGD 需要更大的学习率，Adam是1e-4，SGD建议 0.01 或 0.005
-            momentum=0.9,     # 加上动量
+        # 1. 主模型优化器 (Backbone + Classifiers) -> 使用 SGD
+        self.optimizer_main = torch.optim.SGD(
+            self.model.parameters(),
+            lr=0.01,
+            momentum=0.9,
             weight_decay=1e-5
         )
 
+        # 2. FOOGD 优化器 (Score Model) -> 使用 Adam
+        if self.foogd_module:
+            self.optimizer_foogd = torch.optim.Adam(
+                self.foogd_module.parameters(),
+                lr=1e-3,  # Adam 标准学习率
+                betas=(0.9, 0.999)
+            )
+
         # 损失权重
-        self.lambda_ksd = 0.00001  # KSD损失权重
+        self.lambda_ksd = 0.1  # KSD损失权重
         self.lambda_sm = 0.005   # 评分匹配损失权重
 
         # 傅里叶增强参数
@@ -141,7 +144,10 @@ class FLClient:
             for batch_idx, (data, targets) in enumerate(self.train_loader):
                 data, targets = data.to(self.device), targets.to(self.device)
 
-                self.optimizer.zero_grad()
+                # 清零两个优化器的梯度
+                self.optimizer_main.zero_grad()
+                if self.foogd_module:
+                    self.optimizer_foogd.zero_grad()
 
                 # [修改] 使用 autocast 上下文管理器 (PyTorch 2.0+ API)
                 with torch.amp.autocast('cuda'):
@@ -163,7 +169,6 @@ class FLClient:
                     classification_loss = loss_g + loss_p
 
                     # 5. 计算 FOOGD 损失 (所有计算都在 autocast 下进行)
-                    foogd_loss = torch.tensor(0.0).to(self.device)
                     ksd_loss_val = 0.0
                     sm_loss_val = 0.0
 
@@ -171,33 +176,47 @@ class FLClient:
                         # 注意：features 需要是 FP32 还是 FP16 取决于实现，通常 autocast 会自动处理
                         # 但如果出现数值不稳定，可以在这里暂时退出 autocast
                         ksd_loss, sm_loss, _ = self.foogd_module(features_norm, features_aug_norm)
-                        # [关键调整] 降低权重，防止主导训练
-                        # 建议先设得很小，跑通分类再说
-                        foogd_loss = self.lambda_ksd * ksd_loss + self.lambda_sm * sm_loss
 
                         ksd_loss_val = ksd_loss.item()
                         sm_loss_val = sm_loss.item()
 
-                    # 总损失
-                    total_batch_loss = classification_loss + foogd_loss
+                    # 关键修改：Loss 组合
+                    # 1. 用于更新主模型的 Loss (分类 + KSD)
+                    loss_for_main = classification_loss + self.lambda_ksd * ksd_loss
 
-                # [修改] 使用 scaler 进行反向传播和步进
-                self.scaler.scale(total_batch_loss).backward()
+                    # 2. 用于更新 FOOGD 的 Loss (SM Loss)
+                    # 注意：SM Loss 只用于更新 ScoreNet，不应该回传给 Backbone
+                    # (我们在 compute_sm3d_loss 里已经 detach 了 features，所以这里直接用即可)
+                    loss_for_foogd = sm_loss
 
-                # 梯度裁剪 (Unscale 之后才能裁剪)
-                self.scaler.unscale_(self.optimizer)
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=5.0)
+                # 反向传播与更新
+                # 注意：由于用了 scaler，需要分别处理
+
+                # Update Main Model
+                self.scaler.scale(loss_for_main).backward(retain_graph=True) # retain_graph=True 如果需要共用计算图
+                self.scaler.unscale_(self.optimizer_main)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
+                self.scaler.step(self.optimizer_main)
+
+                # Update FOOGD Module
                 if self.foogd_module:
-                    torch.nn.utils.clip_grad_norm_(self.foogd_module.parameters(), max_norm=5.0)
+                    self.scaler.scale(loss_for_foogd).backward()
+                    self.scaler.unscale_(self.optimizer_foogd)
+                    torch.nn.utils.clip_grad_norm_(self.foogd_module.parameters(), 5.0)
+                    self.scaler.step(self.optimizer_foogd)
 
-                self.scaler.step(self.optimizer)
                 self.scaler.update()
 
                 # 记录数据
                 batch_size = data.size(0)
+                # 计算总损失用于记录 (分类 + KSD + SM)
+                if self.foogd_module:
+                    total_batch_loss = classification_loss + self.lambda_ksd * ksd_loss + self.lambda_sm * sm_loss
+                else:
+                    total_batch_loss = classification_loss
                 total_loss += total_batch_loss.item() * batch_size
                 total_samples += batch_size
-                
+
                 epoch_log['cls'] += classification_loss.item() * batch_size
                 epoch_log['ksd'] += ksd_loss_val * batch_size
                 epoch_log['sm'] += sm_loss_val * batch_size

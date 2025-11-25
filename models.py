@@ -252,7 +252,7 @@ class FOOGD_Module(nn.Module):
         sq_dist = torch.sum(X_diff**2, dim=2)
         term4 = (dim / (sigma**2) - sq_dist / (sigma**4)) * K_xx
 
-        ksd = (term1 + term2 + term3 + term4).mean()
+        ksd = (term1 + term2 + term3 + term4).mean() / self.feature_dim
         return ksd
 
     def forward(self, features, features_aug=None):
