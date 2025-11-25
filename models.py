@@ -248,14 +248,19 @@ class FOOGD_Module(nn.Module):
         # [B, B, Dim]
         X_diff = features.unsqueeze(1) - features.unsqueeze(0)
 
-        # Term 2: s(x)^T * grad_x' k(x,x')
-        # grad_x' k = 1/sigma^2 * (x-x') * k
-        # 注意：这里的 scores 是 score(z_aug)
-        term2 = torch.einsum('bi, bij -> bj', scores, X_diff) * K_xx / (sigma**2 + 1e-8)
-    
-        # Term 3: s(x')^T * grad_x k(x,x')
-        # grad_x k = -1/sigma^2 * (x-x') * k
-        term3 = -torch.einsum('bj, bij -> bi', scores, X_diff) * K_xx / (sigma**2 + 1e-8)
+        # 修正后的 Term 2
+        # scores: [Batch(i), Dim(d)] -> 'id'
+        # X_diff: [Batch(i), Batch(j), Dim(d)] -> 'ijd'
+        # 结果: [Batch(i), Batch(j)] -> 'ij'
+        # 物理含义: 计算当前样本 i 的 score 与差向量 (x_i - x_j) 的点积
+        term2 = torch.einsum('id, ijd -> ij', scores, X_diff) * K_xx / (sigma**2 + 1e-8)
+
+        # 修正后的 Term 3
+        # scores: [Batch(j), Dim(d)] -> 'jd' (注意这里取的是 j，代表对方样本)
+        # X_diff: [Batch(i), Batch(j), Dim(d)] -> 'ijd'
+        # 结果: [Batch(i), Batch(j)] -> 'ij'
+        # 物理含义: 计算对方样本 j 的 score 与差向量 (x_i - x_j) 的点积
+        term3 = -torch.einsum('jd, ijd -> ij', scores, X_diff) * K_xx / (sigma**2 + 1e-8)
     
         # Term 4: trace(grad_x grad_x' k)
         dim = features.size(1)
