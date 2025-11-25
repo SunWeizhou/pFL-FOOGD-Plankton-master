@@ -188,28 +188,38 @@ class FOOGD_Module(nn.Module):
         return loss_mmd
 
     def compute_sm3d_loss(self, features, lambda_m=0.5):
-        """
-        [关键修复] 计算 SM3D 损失
-        必须 detach features，防止 Score Model 的训练反过来破坏骨干网络的特征
-        """
-        # 1. Detach features! 这一步至关重要
-        # 我们只训练 Score Model 去拟合 features，不改变 features 本身
+        # 1. Detach features (保持不变)
         features_fixed = features.detach()
-
         batch_size = features_fixed.size(0)
 
-        # Part A: DSM
-        noise = torch.randn_like(features_fixed) * 0.1
+        # --- Part A: Denoising Score Matching (DSM) ---
+        sigma = 0.1 # 建议提取为类变量或参数
+        noise = torch.randn_like(features_fixed) * sigma
         noisy_features = features_fixed + noise
-        score_pred = self.score_model(noisy_features)
-        score_true = -noise / (0.1 ** 2)
-        l_dsm = 0.5 * F.mse_loss(score_pred, score_true)
 
-        # Part B: MMD
+        # 预测 Score
+        score_pred = self.score_model(noisy_features)
+
+        # 真实 Score (目标)
+        # target = -noise / sigma^2
+        score_true = -noise / (sigma ** 2)
+
+        # [核心修正 1] 计算未归一化的 Sum Loss
+        # 使用 sum reduction 避免特征维度 (1664) 导致的梯度稀释
+        raw_dsm_loss = 0.5 * F.mse_loss(score_pred, score_true, reduction='sum') / batch_size
+
+        # [核心修正 2] 加上 sigma^2 权重 (Variance Reduction)
+        # 这一步将 Loss 的量级从 ~50 拉回到 ~0.5，极大地稳定梯度
+        l_dsm = raw_dsm_loss * (sigma ** 2)
+
+        # --- Part B: MMD (保持不变) ---
         z_gen = self.langevin_dynamic_sampling(batch_size, features.device)
         l_mmd = self.compute_mmd_loss(features_fixed, z_gen)
 
-        return (1 - lambda_m) * l_dsm + lambda_m * l_mmd
+        # 总损失
+        total_loss = (1 - lambda_m) * l_dsm + lambda_m * l_mmd
+
+        return total_loss
 
     def compute_ksd_loss(self, z, z_aug):
         """
