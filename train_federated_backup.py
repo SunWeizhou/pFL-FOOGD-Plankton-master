@@ -89,7 +89,7 @@ def create_clients(n_clients, model_template, foogd_template, client_loaders, de
 
 
 def federated_training(args):
-    """联邦学习训练主函数 (增强版: 修复检查点与评估逻辑)"""
+    """联邦学习训练主函数"""
     print("开始联邦学习训练...")
 
     # 设置设备
@@ -126,72 +126,30 @@ def federated_training(args):
     # 创建服务端
     server = FLServer(global_model, foogd_module, device)
 
-    # -------------------------------------------------
-    # 1. 增强的检查点加载逻辑 (断点续训/恢复)
-    # -------------------------------------------------
-    start_round = 0
-    best_acc = 0.0
-
-    # 尝试自动寻找最新的检查点 (防止意外中断)
-    checkpoint_dir = os.path.join(experiment_dir, "checkpoints")
-    if os.path.exists(checkpoint_dir):
-        checkpoints = sorted([f for f in os.listdir(checkpoint_dir) if f.endswith('.pth')])
-        if checkpoints and args.resume: # 假设你在 argparse 加了 --resume
-            latest_ckpt = os.path.join(checkpoint_dir, checkpoints[-1])
-            print(f"!!! 发现检查点，准备恢复: {latest_ckpt} !!!")
-            ckpt = torch.load(latest_ckpt)
-
-            # 恢复 Server
-            server.global_model.load_state_dict(ckpt['global_model_state_dict'])
-            if foogd_module and ckpt['foogd_state_dict']:
-                foogd_module.load_state_dict(ckpt['foogd_state_dict'])
-
-            # 恢复训练进度
-            start_round = ckpt['round']
-            training_history = ckpt['training_history']
-            best_acc = training_history.get('best_acc', 0.0) # 如果历史里没存，就默认0
-
-            # 注意：Client 的状态将在创建 Client 后恢复
-            saved_client_states = ckpt.get('client_states', None)
-        else:
-            saved_client_states = None
-    else:
-        saved_client_states = None
-
     # 创建客户端
     print("\n创建客户端...")
     clients = create_clients(
         args.n_clients, global_model, foogd_module, client_loaders, device, args.model_type
     )
 
-    # [关键修复 1] 如果有检查点，恢复每个 Client 的 Head-P
-    if saved_client_states is not None:
-        print("正在恢复客户端个性化状态 (Head-P)...")
-        for i, client in enumerate(clients):
-            if i in saved_client_states:
-                # 仅加载个性化头，或者整个模型状态
-                # 由于 create_clients 已经拷贝了 global weights，这里 load_state_dict 会覆盖 head_p
-                client.model.load_state_dict(saved_client_states[i], strict=False)
+    # 训练历史
+    training_history = {
+        'rounds': [],
+        'train_losses': [],
+        'test_accuracies': [],  # ID (Clean) Accuracy
+        'inc_accuracies': [],   # IN-C (Corrupted) Accuracy <- 新增
+        'test_losses': [],
+        'near_auroc': [],
+        'far_auroc': []
+    }
 
-    # 如果没有恢复历史，初始化历史记录
-    if 'training_history' not in locals():
-        training_history = {
-            'rounds': [],
-            'train_losses': [],
-            'test_accuracies': [],
-            'avg_person_acc': [], # [关键修复 2] 确保有这个 key
-            'avg_global_local_acc': [],
-            'inc_accuracies': [],
-            'test_losses': [],
-            'near_auroc': [],
-            'far_auroc': [],
-            'best_acc': 0.0
-        }
+    # [新增] 记录历史最优准确率
+    best_acc = 0.0
 
     # 联邦学习训练循环
-    print(f"\n开始联邦学习训练，从第 {start_round + 1} 轮 到 {args.communication_rounds} 轮...")
+    print(f"\n开始联邦学习训练，共 {args.communication_rounds} 轮...")
 
-    for round_num in range(start_round, args.communication_rounds):
+    for round_num in range(args.communication_rounds):
         print(f"\n=== 通信轮次 {round_num + 1}/{args.communication_rounds} ===")
 
         # 选择参与本轮训练的客户端
@@ -233,54 +191,115 @@ def federated_training(args):
         for client in clients:
             client.set_generic_parameters(server.get_global_parameters())
 
-        # === 评估阶段 ===
+        # === 评估阶段 (修改后) ===
         if (round_num + 1) % args.eval_frequency == 0 or round_num == args.communication_rounds - 1:
             print("\n评估模型...")
 
-            # 1. Server Global Model 评估
+            # 1. 评估 Server 端的 Global Model (主要看 head_g 和 OOD 检测)
+            # 注意：这里的 metrics['id_accuracy'] 是 head_g 的准确率
             test_metrics = server.evaluate_global_model(
-                test_loader, near_ood_loader, far_ood_loader,
-                inc_loader if ((round_num + 1) % 5 == 0) else None # [优化] IN-C 每5轮测一次，省时间
+                test_loader, near_ood_loader, far_ood_loader, inc_loader
             )
 
-            # 2. [关键修复 2] 方案 B：严谨的本地测试集评估
+            # =================================================================================
+            # [修改版] 2. 评估所有 Client 的 Local Model (主要看 head_p)
+            # 采用方案 B：严谨的"本地测试集 (Local Test Set)" 评估逻辑
+            # 原理：只用客户端"训练过/见过"的类别来考核它的个性化模型，避免评估未见类别的干扰
+            # =================================================================================
+
             client_acc_p_list = []
             client_acc_g_list = []
+
             print(f"  正在评估 {len(clients)} 个客户端的个性化性能 (严谨模式: 仅评估本地可见类别)...")
 
             for client in clients:
-                # --- 方案 B 代码段开始 ---
+                # --- 步骤 1: 确定该客户端见过的类别 (Seen Classes) ---
+                # client.train_loader.dataset 是一个 Subset 对象
                 subset = client.train_loader.dataset
+                # 获取子集背后的完整训练集对象 (PlanktonDataset)
                 full_train_dataset = subset.dataset
+                # 获取该客户端拥有的样本索引列表
                 client_indices = subset.indices
+
+                # 提取该客户端训练集中出现过的所有唯一标签
                 seen_classes = set()
                 for idx in client_indices:
-                    seen_classes.add(full_train_dataset.labels[idx])
+                    # 直接访问原始数据集的 labels 列表，比遍历 loader 快得多
+                    label = full_train_dataset.labels[idx]
+                    seen_classes.add(label)
 
+                # --- 步骤 2: 动态构建本地测试集 (Local Test Set) ---
+                # 获取全局测试集对象
                 test_dataset = test_loader.dataset
-                local_test_indices = [i for i, label in enumerate(test_dataset.labels) if label in seen_classes]
 
+                # 筛选：从全局测试集中，只保留标签属于 seen_classes 的样本索引
+                local_test_indices = [
+                    i for i, label in enumerate(test_dataset.labels)
+                    if label in seen_classes
+                ]
+
+                # 异常处理：万一该客户端太倒霉，它的类别在测试集里一个都没有 (极罕见)
                 if len(local_test_indices) == 0:
+                    print(f"    [警告] 客户端 {client.client_id} 的本地测试集为空 (训练集类别在测试集中未出现)，跳过此客户端。")
                     continue
 
+                # 利用 Subset 创建一个新的轻量级数据集
                 local_test_subset = torch.utils.data.Subset(test_dataset, local_test_indices)
+
+                # 创建临时的 DataLoader 用于评估
+                # 注意：num_workers 可以设小一点，避免频繁创建销毁进程的开销
                 local_test_loader = torch.utils.data.DataLoader(
-                    local_test_subset, batch_size=args.batch_size, shuffle=False, num_workers=2, pin_memory=True
+                    local_test_subset,
+                    batch_size=args.batch_size,
+                    shuffle=False,
+                    num_workers=4,
+                    pin_memory=True
                 )
 
+                # --- 步骤 3: 执行评估 ---
+                # 使用筛选后的专属测试集进行评估
                 c_metrics = client.evaluate(local_test_loader)
+
                 client_acc_p_list.append(c_metrics['acc_p'])
                 client_acc_g_list.append(c_metrics['acc_g'])
-                # --- 方案 B 代码段结束 ---
 
-            avg_acc_p = sum(client_acc_p_list) / len(client_acc_p_list) if client_acc_p_list else 0.0
-            avg_acc_g_local = sum(client_acc_g_list) / len(client_acc_g_list) if client_acc_g_list else 0.0
+                # (可选) 打印详细调试信息，看看每个客户端测了多少样本
+                # print(f"    Client {client.client_id}: Seen {len(seen_classes)} classes, Test Samples: {len(local_test_indices)}, Acc-P: {c_metrics['acc_p']:.4f}")
 
-            # 3. 记录日志 (确保写入 history)
+            # 计算平均值 (防止除以零)
+            if len(client_acc_p_list) > 0:
+                avg_acc_p = sum(client_acc_p_list) / len(client_acc_p_list)
+                avg_acc_g_local = sum(client_acc_g_list) / len(client_acc_g_list)
+            else:
+                avg_acc_p = 0.0
+                avg_acc_g_local = 0.0
+
+            # 更新历史记录
             training_history['rounds'].append(round_num + 1)
+            # 记录 Server 端的 head_g
             training_history['test_accuracies'].append(test_metrics['id_accuracy'])
-            training_history['avg_person_acc'].append(avg_acc_p) # 记录个性化精度
-            training_history['avg_global_local_acc'].append(avg_acc_g_local)
+            # [建议新增] 记录 Average Personal Accuracy
+            training_history.setdefault('avg_person_acc', []).append(avg_acc_p)
+
+            print(f"  [Server] Global Head-G ID准确率: {test_metrics['id_accuracy']:.4f}")
+            print(f"  [Clients] Average Head-P ID准确率: {avg_acc_p:.4f} (这是个性化性能的关键指标!)")
+            print(f"  [Clients] Average Head-G ID准确率: {avg_acc_g_local:.4f}")
+
+            # [新增] 保存历史最优模型 (Best Model)
+            current_acc = test_metrics['id_accuracy']
+            if current_acc > best_acc:
+                best_acc = current_acc
+                best_model_path = os.path.join(experiment_dir, "best_model.pth")
+                torch.save({
+                    'round': round_num + 1,
+                    'global_model_state_dict': server.global_model.state_dict(),
+                    'foogd_state_dict': foogd_module.state_dict() if foogd_module else None,
+                    'best_acc': best_acc,
+                    'config': vars(args)
+                }, best_model_path)
+                print(f"  ★ 发现新最优模型 (Acc: {best_acc:.4f})，已保存: {best_model_path}")
+
+            # 原有记录逻辑保持不变
             training_history['train_losses'].append(round_train_loss / len(selected_clients))
             training_history['test_losses'].append(test_metrics['id_loss'])
 
@@ -297,52 +316,35 @@ def federated_training(args):
                 # 对比 ID 准确率，可以直观看到下降幅度
                 print(f"  准确率下降 (Drop): {test_metrics['id_accuracy'] - acc:.4f}")
 
-            print(f"  [Server] Global Head-G ID准确率: {test_metrics['id_accuracy']:.4f}")
-            print(f"  [Clients] Average Head-P ID准确率: {avg_acc_p:.4f} (个性化严谨指标)")
+            # 打印评估结果
+            print(f"  ID损失: {test_metrics['id_loss']:.4f}")
+            if 'near_auroc' in test_metrics:
+                print(f"  Near-OOD AUROC: {test_metrics['near_auroc']:.4f}")
+            if 'far_auroc' in test_metrics:
+                print(f"  Far-OOD AUROC: {test_metrics['far_auroc']:.4f}")
 
-            # 4. 保存 Best Model (增加 client states)
-            current_acc = avg_acc_p # 建议：pFL 通常以个性化精度作为 Best 的标准，或者用 id_accuracy，你自己定
-            if current_acc > best_acc:
-                best_acc = current_acc
-                training_history['best_acc'] = best_acc # 更新历史中的 best
-
-                # 收集所有 Client 的状态
-                client_states = {i: client.model.state_dict() for i, client in enumerate(clients)}
-
-                torch.save({
-                    'round': round_num + 1,
-                    'global_model_state_dict': server.global_model.state_dict(),
-                    'foogd_state_dict': foogd_module.state_dict() if foogd_module else None,
-                    'client_states': client_states, # [关键] 保存客户端状态
-                    'best_acc': best_acc,
-                    'config': vars(args)
-                }, os.path.join(experiment_dir, "best_model.pth"))
-                print(f"  ★ 新最优模型 (Avg Person Acc: {best_acc:.4f}) 已保存")
-
-            # 5. 保存定期 Checkpoint (增加 client states)
+            # 保存检查点
             if (round_num + 1) % args.save_frequency == 0:
-                client_states = {i: client.model.state_dict() for i, client in enumerate(clients)}
+                checkpoint_path = os.path.join(
+                    experiment_dir, "checkpoints", f"round_{round_num + 1}.pth"
+                )
                 torch.save({
                     'round': round_num + 1,
                     'global_model_state_dict': server.global_model.state_dict(),
                     'foogd_state_dict': foogd_module.state_dict() if foogd_module else None,
-                    'client_states': client_states, # [关键] 保存客户端状态
-                    'training_history': training_history, # 保存完整历史以便恢复
+                    'training_history': training_history,
                     'config': vars(args)
-                }, os.path.join(experiment_dir, "checkpoints", f"round_{round_num + 1}.pth"))
-                print(f"检查点已保存: round_{round_num + 1}.pth")
+                }, checkpoint_path)
+                print(f"检查点已保存: {checkpoint_path}")
 
     # 训练完成
     print(f"\n联邦学习训练完成!")
 
-    # 保存最终模型 (包含所有客户端状态)
+    # 保存最终模型
     final_model_path = os.path.join(experiment_dir, "final_model.pth")
-    client_states = {i: client.model.state_dict() for i, client in enumerate(clients)}
     torch.save({
-        'round': args.communication_rounds,
         'global_model_state_dict': server.global_model.state_dict(),
         'foogd_state_dict': foogd_module.state_dict() if foogd_module else None,
-        'client_states': client_states, # [关键] 保存客户端状态
         'training_history': training_history,
         'config': vars(args)
     }, final_model_path)
@@ -372,14 +374,7 @@ def federated_training(args):
         if foogd_module and checkpoint['foogd_state_dict']:
             foogd_module.load_state_dict(checkpoint['foogd_state_dict'])
 
-        # 恢复客户端状态 (如果存在)
-        if 'client_states' in checkpoint:
-            print("  正在恢复客户端个性化状态...")
-            for i, client in enumerate(clients):
-                if i in checkpoint['client_states']:
-                    client.model.load_state_dict(checkpoint['client_states'][i], strict=False)
-
-        print(f"  已恢复到第 {checkpoint['round']} 轮的状态 (Best Acc: {checkpoint['best_acc']:.4f})")
+        print(f"  已恢复到第 {checkpoint['round']} 轮的状态 (Acc: {checkpoint['best_acc']:.4f})")
     else:
         print("  未找到最优模型检查点，将使用最终轮次模型进行评估（这可能不是最佳性能）。")
 
@@ -489,8 +484,6 @@ def main():
     parser.add_argument('--output_dir', type=str, default='./experiments',
                        help='输出目录')
     parser.add_argument('--seed', type=int, default=42, help='随机种子')  # [新增]
-    parser.add_argument('--resume', action='store_true', default=False,
-                       help='是否从最新检查点恢复训练')  # [新增]
 
     args = parser.parse_args()
 

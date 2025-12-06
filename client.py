@@ -193,7 +193,7 @@ class FLClient:
                 # 注意：由于用了 scaler，需要分别处理
 
                 # Update Main Model
-                self.scaler.scale(loss_for_main).backward(retain_graph=True) # retain_graph=True 如果需要共用计算图
+                self.scaler.scale(loss_for_main).backward() # retain_graph=True 如果需要共用计算图
                 self.scaler.unscale_(self.optimizer_main)
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
                 self.scaler.step(self.optimizer_main)
