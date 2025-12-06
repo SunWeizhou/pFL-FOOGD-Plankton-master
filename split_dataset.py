@@ -49,11 +49,12 @@ NEAR_OOD_CLASSES = [
     '066_Actiniaria larva', '067_Hydroid', '069_Jelly-like', '070_Bryozoan larva',
     '072_Gelatinous Zooplankton', '073_Unknown_Type A', '074_Unknown_Type B',
     '075_Unknown_Type C', '076_Unknown_Type D', '077_Balanomorpha exuviate',
-    '078_Crustacean limb_Type A', '081_Fish Larvae'
+    '081_Fish Larvae'
 ]
 
 # 3. 远-OOD (风格) 类别 - 12 个
 FAR_OOD_CLASSES = [
+    '078_Crustacean limb_Type A',    # <-- 添加到这里 (通常它是 Far-OOD)
     '079_Crustacean limb_Type B', '080_Fish egg', '083_Particle_filamentous_Type A',
     '084_Particle_filamentous_Type B', '085_Particle_bluish', '086_Particle_molts',
     '087_Particle_translucent flocs', '088_Particle_yellowish flocs',
@@ -62,7 +63,7 @@ FAR_OOD_CLASSES = [
 
 # 验证类别数量
 print(f"ID categories: {len(ID_CLASSES)} (should be 54)")
-print(f"Near-OOD categories: {len(NEAR_OOD_CLASSES)} (should be 26)")
+print(f"Near-OOD categories: {len(NEAR_OOD_CLASSES)} (should be 25 after moving '078_Crustacean limb_Type A' to Far-OOD)")
 print(f"Far-OOD categories: {len(FAR_OOD_CLASSES)} (should be 12)")
 print(f"Total categories: {len(ID_CLASSES) + len(NEAR_OOD_CLASSES) + len(FAR_OOD_CLASSES)} (should be 92)")
 
@@ -73,7 +74,7 @@ else:
     assert len(FAR_OOD_CLASSES) == 12, f"Far-OOD categories should be 12, but got {len(FAR_OOD_CLASSES)}"
 
 assert len(ID_CLASSES) == 54, f"ID categories should be 54, but got {len(ID_CLASSES)}"
-assert len(NEAR_OOD_CLASSES) == 26, f"Near-OOD categories should be 26, but got {len(NEAR_OOD_CLASSES)}"
+assert len(NEAR_OOD_CLASSES) == 25, f"Near-OOD categories should be 25, but got {len(NEAR_OOD_CLASSES)}"
 
 print("Category definitions verified")
 
@@ -124,8 +125,8 @@ def split_dataset():
 
     print("Near-OOD and Far-OOD data processing completed")
 
-    # 处理 ID 数据（8:1:1 拆分）
-    print("\nProcessing ID data (8:1:1 split)...")
+    # 处理 ID 数据（9:1 拆分，验证集合并到训练集）
+    print("\nProcessing ID data (9:1 split, validation merged into training)...")
 
     total_images = {'train': 0, 'val': 0, 'test': 0}
 
@@ -148,14 +149,14 @@ def split_dataset():
 
         # 计算拆分点
         n_total = len(all_files)
-        n_train = int(n_total * 0.8)
-        n_val = int(n_total * 0.1)
-        n_test = n_total - n_train - n_val
+        n_train = int(n_total * 0.9)  # 90% 训练
+        n_val = 0                     # 0% 验证 (或者保留极少量)
+        n_test = n_total - n_train    # 10% 测试
 
         # 拆分文件列表
         train_files = all_files[:n_train]
-        val_files = all_files[n_train:n_train + n_val]
-        test_files = all_files[n_train + n_val:]
+        val_files = []  # 验证集为空
+        test_files = all_files[n_train:]  # 简化索引，因为 n_val = 0
 
         # 创建目标子文件夹
         train_dest_dir = path_id_train / class_name
@@ -177,7 +178,7 @@ def split_dataset():
                 shutil.copy2(source_file, dest_file)
             total_images[split_name] += len(file_list)
 
-        print(f"    {class_name}: train {len(train_files)}, val {len(val_files)}, test {len(test_files)}")
+        print(f"    {class_name}: train {len(train_files)} (90%), test {len(test_files)} (10%)")
 
     print("ID data processing completed")
 
