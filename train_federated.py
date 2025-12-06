@@ -14,12 +14,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 import json
+import random  # 确保导入 random
 
 from models import create_fedrod_model
 from data_utils import create_federated_loaders
 from client import FLClient
 from server import FLServer
 from eval_utils import generate_evaluation_report
+
+def set_seed(seed):
+    """固定所有随机种子，确保实验可复现"""
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    print(f"Random Seed set to: {seed}")
 
 def setup_experiment(args):
     """设置实验环境"""
@@ -418,8 +429,12 @@ def main():
                        help='训练设备')
     parser.add_argument('--output_dir', type=str, default='./experiments',
                        help='输出目录')
+    parser.add_argument('--seed', type=int, default=42, help='随机种子')  # [新增]
 
     args = parser.parse_args()
+
+    # [新增] 在一切开始之前，先设置种子
+    set_seed(args.seed)
 
     # 打印配置
     print("联邦学习训练配置:")
