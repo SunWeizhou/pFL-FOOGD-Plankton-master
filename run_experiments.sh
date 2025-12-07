@@ -39,6 +39,9 @@ run_experiment() {
 
     # 构建基础命令
     # 注意：这里假设你已经修改了 train_federated.py，增加了 --seed 参数
+# 在这里定义新的尺寸变量
+    IMG_SIZE=320 
+
     CMD="python train_federated.py \
         --data_root $DATA_ROOT \
         --n_clients $N_CLIENTS \
@@ -46,6 +49,7 @@ run_experiment() {
         --communication_rounds $ROUNDS \
         --local_epochs $EPOCHS \
         --batch_size $BATCH_SIZE \
+        --image_size $IMG_SIZE \
         --model_type $MODEL \
         --seed $SEED \
         --output_dir ./experiments/$EXP_NAME"
