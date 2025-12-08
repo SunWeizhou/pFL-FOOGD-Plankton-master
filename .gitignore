@@ -8,10 +8,14 @@ DYB-PlanktonNetV1.1.zip
 *.h5
 *.npy
 
-# 实验输出
+# 实验输出（大文件，不上传）
 experiments/
 experiments_foogd_5.0/
+experiments_5.0/
 test_evaluation/
+test_output/
+test_experiments/
+visualizations/
 
 # Python
 __pycache__/
