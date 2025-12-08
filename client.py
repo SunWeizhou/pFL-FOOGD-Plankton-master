@@ -111,6 +111,12 @@ class FLClient:
         if self.foogd_module:
             self.foogd_module.train()
 
+        # [修复] 强制冻结 BN 层 (如果 freeze_bn=True)
+        if self.freeze_bn:
+            for m in self.model.modules():
+                if isinstance(m, torch.nn.BatchNorm2d):
+                    m.eval()
+
         total_loss = 0.0
         total_samples = 0
         epoch_log = {'cls': 0.0, 'ksd': 0.0, 'sm': 0.0}
@@ -157,7 +163,10 @@ class FLClient:
                     loss_p = F.cross_entropy(logits_p, targets)
                     classification_loss = loss_g + loss_p
 
+                    # [修复] 初始化所有损失变量
+                    ksd_loss = torch.tensor(0.0, device=self.device)
                     ksd_loss_val = 0.0
+                    sm_loss = torch.tensor(0.0, device=self.device)
                     sm_loss_val = 0.0
                     loss_for_foogd = torch.tensor(0.0, device=self.device)
 
@@ -185,8 +194,9 @@ class FLClient:
                 self.scaler.update()
 
                 batch_size = data.size(0)
-                total_batch_loss = classification_loss + effective_lambda_ksd * ksd_loss
-                total_loss += total_batch_loss.item() * batch_size
+                # [修复] 统一使用标量值进行统计计算
+                total_batch_loss = classification_loss.item() + effective_lambda_ksd * ksd_loss_val
+                total_loss += total_batch_loss * batch_size
                 total_samples += batch_size
                 epoch_log['cls'] += classification_loss.item() * batch_size
                 epoch_log['ksd'] += ksd_loss_val * batch_size

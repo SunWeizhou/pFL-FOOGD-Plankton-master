@@ -141,7 +141,7 @@ FOOGD集成两个OOD组件：
 
 ### 硬件要求
 
-- **GPU**: NVIDIA RTX 3060 (6GB VRAM) 或更高
+- **GPU**: NVIDIA RTX 3090 (24GB VRAM) 或更高
 - **内存**: 16GB RAM 或更高
 
 ### 软件要求

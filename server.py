@@ -18,8 +18,16 @@ class FLServer:
 
     def get_global_parameters(self):
         """获取全局参数 (Model + FOOGD) - 修复版"""
-        # 使用 state_dict 获取所有参数（包括 BN 统计量）
-        return self.global_model.state_dict()
+        # [修复] 返回带前缀的参数，与 client.set_generic_parameters 保持一致
+        params = {}
+        model_state = self.global_model.state_dict()
+        for key, value in model_state.items():
+            params[f"model.{key}"] = value.clone()
+        if self.foogd_module:
+            foogd_state = self.foogd_module.state_dict()
+            for key, value in foogd_state.items():
+                params[f"foogd.{key}"] = value.clone()
+        return params
 
     def set_global_parameters(self, params):
         """设置全局参数 - 修复版：支持带前缀的参数拆解"""
@@ -178,11 +186,17 @@ if __name__ == "__main__":
 
     # 测试聚合
     print("\n测试参数聚合...")
-    client_updates = [
-        {name: torch.randn_like(param) for name, param in global_params.items()},
-        {name: torch.randn_like(param) for name, param in global_params.items()},
-        {name: torch.randn_like(param) for name, param in global_params.items()}
-    ]
+    client_updates = []
+    for _ in range(3):
+        client_update = {}
+        for name, param in global_params.items():
+            # 只对浮点类型参数生成随机数
+            if param.dtype in [torch.float32, torch.float64, torch.float16]:
+                client_update[name] = torch.randn_like(param)
+            else:
+                # 对于整数类型参数，保持原值
+                client_update[name] = param.clone()
+        client_updates.append(client_update)
     client_sample_sizes = [100, 150, 200]
 
     aggregated_params = server.aggregate(client_updates, client_sample_sizes)
