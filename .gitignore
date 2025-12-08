@@ -1,12 +1,8 @@
-# 数据文件
+# 原始数据集（大文件，不上传）
 Plankton_OOD_Dataset/
 data/
 DYB-PlanktonNet/
 DYB-PlanktonNetV1.1.zip
-*.pth
-*.pkl
-*.h5
-*.npy
 
 # 实验输出（大文件，不上传）
 experiments/
@@ -16,6 +12,15 @@ test_evaluation/
 test_output/
 test_experiments/
 visualizations/
+
+# 模型检查点和数据文件（大文件，不上传）
+*.pth
+*.pt
+*.bin
+*.pkl
+*.h5
+*.npy
+*.npz
 
 # Python
 __pycache__/
@@ -67,5 +72,13 @@ logs/
 *.temp
 
 # 忽略虚拟环境
-gpu_env/.secrets/
+gpu_env/
 .claude_env
+
+# 个人笔记和敏感文件（不上传）
+experiment_analysis_summary.md
+test_foogd_pipeline.py
+.secrets/
+
+# 确保"实验结果的图像"文件夹被包含（不上传）
+# 注意：这个文件夹应该被包含，所以不在.gitignore中排除
