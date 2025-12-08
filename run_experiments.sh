@@ -40,7 +40,7 @@ run_experiment() {
     # 构建基础命令
     # 注意：这里假设你已经修改了 train_federated.py，增加了 --seed 参数
 # 在这里定义新的尺寸变量
-    IMG_SIZE=320 
+    IMG_SIZE=250 
 
     CMD="python train_federated.py \
         --data_root $DATA_ROOT \

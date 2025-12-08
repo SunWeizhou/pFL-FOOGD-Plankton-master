@@ -219,7 +219,8 @@ def federated_training(args):
                 batch_size=args.batch_size,
                 shuffle=False,
                 num_workers=4,  # 既然只创建一次，可以稍微给大点
-                pin_memory=True
+                pin_memory=True,
+                persistent_workers=True  # [新增] 关键！保持子进程存活，避免每轮重复初始化
             )
             client_test_loaders.append(loader)
         else:

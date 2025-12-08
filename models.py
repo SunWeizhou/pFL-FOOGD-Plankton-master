@@ -285,7 +285,8 @@ class FOOGD_Module(nn.Module):
         # 最终 Loss
         ksd = (term1 + term2 + term3 + term4).mean()
 
-        return ksd
+        # [修改] 归一化：除以特征维度，让 KSD 数值从 ~2000 降到 ~2.0
+        return ksd / dim
 
     def forward(self, features, features_aug=None):
         # 1. OOD Score (测试用) - 使用正范数作为异常分数 (Anomaly Score)

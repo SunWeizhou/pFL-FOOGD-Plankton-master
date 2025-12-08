@@ -71,6 +71,9 @@ Key parameters:
 - `--device`: Training device (`cuda` or `cpu`, default: auto-detect)
 - `--seed`: Random seed for reproducibility (default: 42)
 - `--resume`: Resume training from latest checkpoint (flag)
+- `--compute_aug_features`: Compute augmented features for FOOGD (default: True)
+- `--freeze_bn`: Freeze BatchNorm statistics (default: True)
+- `--base_lr`: Base learning rate (default: 0.001)
 
 ## Code Architecture
 
@@ -81,10 +84,12 @@ Key parameters:
   - `FedRoD_Model`: Dual-head architecture with generic and personal classifiers
   - `FOOGD_Module`: Integrates SAG and SM3D for OOD handling
   - `ScoreModel`: Lightweight network for score matching
+  - **Key modifications**: KSD loss normalization (`ksd / dim`) in `compute_ksd_loss()`
 
 - **`client.py`**: Federated learning client implementation
   - `FLClient`: Handles local training, model updates, and evaluation
   - Uses separate optimizers for main model and FOOGD components
+  - **Key parameters**: `target_lambda_ksd = 0.01`, `target_lambda_sm = 0.1`
 
 - **`server.py`**: Federated learning server implementation
   - `FLServer`: Handles model aggregation and global updates
@@ -97,6 +102,14 @@ Key parameters:
 - **`train_federated.py`**: Main training script
   - Orchestrates federated learning rounds
   - Handles evaluation and checkpointing
+  - **Performance optimizations**: Pre-generated client test loaders with `persistent_workers=True`
+
+### Supporting Modules
+- **`eval_utils.py`**: Comprehensive evaluation and visualization tools
+- **`split_dataset.py`**: Dataset preparation and splitting
+- **`test_pipeline.py`**: System testing and validation
+- **`visualize_experiments.py`**: Experiment comparison and visualization
+- **`test_foogd_pipeline.py`**: FOOGD module specific testing
 
 ### Data Structure and Categories
 
@@ -169,6 +182,10 @@ python split_dataset.py
 - **Learning Rates**: Separate learning rates for main model and FOOGD components
 - **Mixed Precision**: Supported via `torch.amp` for memory efficiency
 - **Gradient Clipping**: Applied to prevent exploding gradients
+- **KSD Loss Normalization**: KSD loss is normalized by feature dimension (1024 for DenseNet121, 1664 for DenseNet169) to match classification loss scale
+- **Target Lambda Values**:
+  - `target_lambda_ksd = 0.01` in client.py (after normalization)
+  - `target_lambda_sm = 0.1` in client.py
 
 ## Evaluation Metrics
 
@@ -178,11 +195,19 @@ Training generates comprehensive evaluation including:
 - **Personalization Gain**: Difference between Head_P and Head_G accuracy
 - **IN-C Accuracy**: Performance on corrupted/perturbed data
 
-## Memory Considerations
+## Performance Optimizations
 
+### Evaluation Speed Optimizations
+- **Pre-generated Client Test Loaders**: Client local test loaders are pre-generated before training loop to avoid repeated DataLoader creation
+- **Persistent Workers**: `persistent_workers=True` in DataLoader to keep subprocesses alive across evaluations
+- **Cached Class-to-Indices Mapping**: Pre-computed mapping for fast test subset creation
+- **Optimized KSD Computation**: Single distance matrix calculation with memory-efficient operations
+
+### Memory Considerations
 - **GPU Memory**: Requires NVIDIA RTX 3060 (6GB VRAM) or higher
 - **Batch Size**: Use 16-32 for memory-constrained environments
 - **Model Selection**: DenseNet-121 for lower memory usage
+- **KSD Computation**: Batch size affects memory usage due to O(B²) distance matrix
 
 ## Troubleshooting
 
@@ -210,6 +235,20 @@ experiment_YYYYMMDD_HHMMSS/
     ├── near_ood_detection.png     # Near-OOD detection curves (AUROC/FPR95)
     └── far_ood_detection.png      # Far-OOD detection curves (AUROC/FPR95)
 ```
+
+### Batch Experiment Script
+```bash
+# Run comprehensive experiments with different alpha values and FOOGD settings
+bash run_experiments.sh
+```
+
+The script runs 8 experiments covering:
+1. **Extreme heterogeneity** (α=0.1): Simulates completely isolated sites
+2. **Real strong heterogeneity** (α=0.5): Typical salinity gradient differences (most realistic)
+3. **Real medium heterogeneity** (α=1.0): Frequent water exchange areas
+4. **IID control group** (α=10.0): Ideal uniform mixing (performance upper bound)
+
+Each α value runs with and without FOOGD for comparison.
 
 ### Experiment Analysis
 ```bash
