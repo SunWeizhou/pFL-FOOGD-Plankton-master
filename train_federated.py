@@ -52,7 +52,7 @@ def setup_experiment(args):
 
 import copy # 确保引入 copy
 
-def create_clients(n_clients, model_template, foogd_template, client_loaders, device, model_type='densenet169'):
+def create_clients(n_clients, model_template, foogd_template, client_loaders, device, model_type='densenet169', compute_aug_features=True, freeze_bn=True):
     """创建客户端 (修正版)"""
     clients = []
 
@@ -78,7 +78,9 @@ def create_clients(n_clients, model_template, foogd_template, client_loaders, de
             model=client_model,
             foogd_module=client_foogd,  # 传入独立的副本
             train_loader=client_loaders[client_id],
-            device=device
+            device=device,
+            compute_aug_features=compute_aug_features,
+            freeze_bn=freeze_bn
         )
         clients.append(client)
 
@@ -161,7 +163,9 @@ def federated_training(args):
     # 创建客户端
     print("\n创建客户端...")
     clients = create_clients(
-        args.n_clients, global_model, foogd_module, client_loaders, device, args.model_type
+        args.n_clients, global_model, foogd_module, client_loaders, device, args.model_type,
+        compute_aug_features=args.compute_aug_features,
+        freeze_bn=args.freeze_bn
     )
 
     # [关键修复 1] 如果有检查点，恢复每个 Client 的 Head-P
@@ -464,7 +468,7 @@ def main():
     # 训练参数
     parser.add_argument('--communication_rounds', type=int, default=50,
                        help='通信轮次')
-    parser.add_argument('--local_epochs', type=int, default=1,
+    parser.add_argument('--local_epochs', type=int, default=4,
                        help='每个客户端的本地训练轮数')
     parser.add_argument('--batch_size', type=int, default=32,
                        help='批次大小')
@@ -494,6 +498,10 @@ def main():
     parser.add_argument('--seed', type=int, default=42, help='随机种子')  # [新增]
     parser.add_argument('--resume', action='store_true', default=False,
                        help='是否从最新检查点恢复训练')  # [新增]
+    parser.add_argument('--compute_aug_features', action='store_true', default=True,
+                       help='是否计算增强数据的特征（显存不足时可设为False）')
+    parser.add_argument('--freeze_bn', action='store_true', default=True,
+                       help='是否冻结BN统计量（默认True，使用预训练ImageNet统计量）')
 
     args = parser.parse_args()
 

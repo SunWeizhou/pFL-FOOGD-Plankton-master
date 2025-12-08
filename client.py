@@ -19,7 +19,7 @@ import numpy as np
 class FLClient:
     """联邦学习客户端"""
 
-    def __init__(self, client_id, model, foogd_module, train_loader, device):
+    def __init__(self, client_id, model, foogd_module, train_loader, device, compute_aug_features=True, freeze_bn=True):
         """
         初始化客户端
 
@@ -29,12 +29,16 @@ class FLClient:
             foogd_module: FOOGD模块
             train_loader: 训练数据加载器
             device: 训练设备
+            compute_aug_features: 是否计算增强数据的特征（显存不足时可设为False）
+            freeze_bn: 是否冻结BN统计量（默认True，使用预训练ImageNet统计量）
         """
         self.client_id = client_id
         self.model = model
         self.foogd_module = foogd_module
         self.train_loader = train_loader
         self.device = device
+        self.compute_aug_features = compute_aug_features  # 是否计算增强特征
+        self.freeze_bn = freeze_bn  # 是否冻结BN统计量
 
         # 优化器
         # [删除或注释掉] 原来的 Adam
@@ -56,9 +60,34 @@ class FLClient:
                 betas=(0.9, 0.999)
             )
 
+        # 3. 学习率调度器 (CosineAnnealingLR)
+        # 主模型调度器
+        self.scheduler_main = torch.optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer_main,
+            T_max=50,  # 余弦周期（通常设为总训练轮次）
+            eta_min=1e-5  # 最小学习率
+        )
+
+        # FOOGD调度器（如果存在）
+        if self.foogd_module:
+            self.scheduler_foogd = torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer_foogd,
+                T_max=50,
+                eta_min=1e-6
+            )
+
         # 损失权重
         self.lambda_ksd = 0.01  # KSD损失权重
         self.lambda_sm = 0.1   # 评分匹配损失权重
+
+    def freeze_bn_stats(self, model):
+        """
+        冻结BN层的统计量（mean/var），但保留weight/bias的梯度
+        这样模型会使用预训练的ImageNet统计量（通常足够通用）
+        """
+        for m in model.modules():
+            if isinstance(m, torch.nn.BatchNorm2d):
+                m.eval()  # 冻结mean/var更新，但保留weight/bias的梯度
 
         # 傅里叶增强参数
         self.use_fourier_aug = True  # 是否使用傅里叶增强
@@ -130,6 +159,11 @@ class FLClient:
     def train_step(self, local_epochs=1, current_round=0):
         # [无需修改] 保持前面的 optimizer 定义和 setup 不变
         self.model.train()
+
+        # 如果启用冻结BN统计量，将BN层设为eval模式
+        if self.freeze_bn:
+            self.freeze_bn_stats(self.model)
+
         if self.foogd_module:
             self.foogd_module.train()
 
@@ -180,12 +214,19 @@ class FLClient:
                     # 1. 数据增强
                     data_aug = self._apply_hybrid_augmentation(data)
 
-                    # 2. 前向传播
+                    # 2. 前向传播 - 原始数据
                     logits_g, logits_p, features = self.model(data)
-                    # 如果显存够，建议计算增强数据的特征用于KSD (更严谨)
-                    # _, _, features_aug = self.model(data_aug)
-                    # 暂用原图特征做演示，若跑通后建议换成 features_aug
 
+                    # 3. 前向传播 - 增强数据 (为了KSD)
+                    # 这一步会增加约30-50%的显存开销和计算时间
+                    if self.compute_aug_features:
+                        _, _, features_aug = self.model(data_aug)
+                        features_aug_norm = F.normalize(features_aug, p=2, dim=1)
+                    else:
+                        # 如果显存不足，使用原始特征作为替代（效果会打折扣）
+                        features_aug_norm = None
+
+                    # 4. 归一化
                     features_norm = F.normalize(features, p=2, dim=1)
 
                     # 3. 计算分类损失
@@ -202,9 +243,12 @@ class FLClient:
                     sm_loss = torch.tensor(0.0, device=self.device)
 
                     if self.foogd_module:
-                        # 传入 features_norm (注意: KSD 最好用 features 和 features_aug)
-                        # 这里为了不改动太多，假设 foogd_module 内部逻辑已通过
-                        ksd_loss, sm_loss, _ = self.foogd_module(features_norm, features_norm) # 注意这里第二个参数应该是增强特征
+                        # 传入原始特征和增强特征用于KSD计算
+                        if features_aug_norm is not None:
+                            ksd_loss, sm_loss, _ = self.foogd_module(features_norm, features_aug_norm)
+                        else:
+                            # 如果没有计算增强特征，只传入原始特征（KSD损失将为0）
+                            ksd_loss, sm_loss, _ = self.foogd_module(features_norm, None)
 
                         ksd_loss_val = ksd_loss.item()
                         sm_loss_val = sm_loss.item()
@@ -240,6 +284,13 @@ class FLClient:
                 epoch_log['cls'] += classification_loss.item() * batch_size
                 epoch_log['ksd'] += ksd_loss_val * batch_size
                 epoch_log['sm'] += sm_loss_val * batch_size
+
+            # 每个epoch结束后更新学习率调度器
+            # 注意：在PyTorch 1.1.0+中，应该在optimizer.step()之后调用scheduler.step()
+            # 这里已经在每个batch中调用了optimizer.step()，所以可以安全调用scheduler.step()
+            self.scheduler_main.step()
+            if self.foogd_module:
+                self.scheduler_foogd.step()
 
         # 打印分项损失信息 (只打印第一个 epoch 的平均值)
         if total_samples > 0:
@@ -398,7 +449,9 @@ if __name__ == "__main__":
         model=model,
         foogd_module=foogd_module,
         train_loader=client_loaders[0],
-        device=device
+        device=device,
+        compute_aug_features=True,  # 默认计算增强特征
+        freeze_bn=True  # 默认冻结BN统计量
     )
 
     # 测试训练步骤

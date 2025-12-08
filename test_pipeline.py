@@ -129,7 +129,9 @@ def test_client_server():
             model=model,
             foogd_module=foogd_module,
             train_loader=client_loaders[0],
-            device=device
+            device=device,
+            compute_aug_features=True,  # 测试时默认计算增强特征
+            freeze_bn=True  # 测试时默认冻结BN统计量
         )
         print(f"[OK] 客户端创建成功")
 
