@@ -201,10 +201,8 @@ class FLClient:
             avg_cls = epoch_log['cls'] / total_samples
             avg_ksd = epoch_log['ksd'] / total_samples
             avg_sm = epoch_log['sm'] / total_samples
-
-            # 只在某些轮次打印详细损失
-            if current_round % 5 == 0:
-                print(f"  Client {self.client_id} Losses - CLS: {avg_cls:.4f}, KSD: {avg_ksd:.6f}, SM: {avg_sm:.6f}")
+            print(f"Client {self.client_id} - Epochs {local_epochs} - Avg Loss: {total_loss / total_samples:.4f} | "
+                  f"Cls: {avg_cls:.4f}, KSD: {avg_ksd:.6f}, SM: {avg_sm:.6f}")
 
         avg_loss = total_loss / total_samples if total_samples > 0 else 0.0
         generic_params = self.get_generic_parameters()

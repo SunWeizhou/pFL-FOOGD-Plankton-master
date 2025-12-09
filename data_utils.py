@@ -11,6 +11,7 @@ import os
 import numpy as np
 import torch
 import pickle
+from datetime import datetime
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from PIL import Image
@@ -82,6 +83,7 @@ class PlanktonDataset(Dataset):
         # 2. 建立标签映射 (保留原有逻辑)
         # ============================================================
         base_train_dir = os.path.join(root_dir, 'D_ID_train')
+        self.class_to_idx = {}  # 初始化为空字典
         if os.path.exists(base_train_dir):
             id_dirs = sorted([
                 d for d in os.listdir(base_train_dir)
@@ -92,21 +94,37 @@ class PlanktonDataset(Dataset):
             print(f"Warning: Base train dir {base_train_dir} not found for label mapping")
 
         # ============================================================
-        # 3. 加载图像数据 (新增缓存逻辑)
+        # 3. 加载图像数据 (改进的缓存逻辑)
         # ============================================================
         # 定义缓存文件路径，例如: ./Plankton_OOD_Dataset/cache_train.pkl
         cache_file = os.path.join(root_dir, f"cache_{mode}.pkl")
+        use_cache = False
 
+        # ============================================================
+        # 改进的缓存逻辑：只有当缓存"新鲜"时才使用
+        # ============================================================
         if os.path.exists(cache_file):
-            # 命中缓存：直接加载，秒开
-            print(f"Loading cached file list from {cache_file}...")
+            print(f"[{mode}] 发现缓存文件: {cache_file}")
             with open(cache_file, 'rb') as f:
                 cache_data = pickle.load(f)
-            self.image_paths = cache_data['paths']
-            self.labels = cache_data['labels']
-        else:
+
+            # 【关键新增】: 简单的校验机制
+            # 检查缓存里的路径是否真的存在？(抽查第一个和最后一个)
+            if len(cache_data['paths']) > 0 and \
+               os.path.exists(cache_data['paths'][0]) and \
+               os.path.exists(cache_data['paths'][-1]):
+
+                self.image_paths = cache_data['paths']
+                self.labels = cache_data['labels']
+                use_cache = True
+                print(f"[{mode}] 缓存校验通过，已加载 {len(self.image_paths)} 张图片。")
+            else:
+                print(f"[{mode}] 缓存文件似乎已过期（路径不存在），将重新扫描...")
+                use_cache = False
+
+        if not use_cache:
             # 未命中缓存：执行原来的扫描逻辑
-            print(f"Scanning files for {mode} dataset (this may take a while)...")
+            print(f"[{mode}] 扫描文件 (这可能需要一些时间)...")
             if os.path.exists(data_dir):
                 for dir_name in os.listdir(data_dir):
                     class_dir = os.path.join(data_dir, dir_name)
@@ -131,13 +149,18 @@ class PlanktonDataset(Dataset):
                             self.labels.append(current_label)
 
                 # 扫描完成后，保存到缓存
-                print(f"Saving scanned list to {cache_file}...")
+                print(f"[{mode}] 保存扫描结果到 {cache_file}...")
                 with open(cache_file, 'wb') as f:
-                    pickle.dump({'paths': self.image_paths, 'labels': self.labels}, f)
+                    # 建议：可以在缓存里多存一些元数据，比如生成时间
+                    pickle.dump({
+                        'paths': self.image_paths,
+                        'labels': self.labels,
+                        'timestamp': datetime.now().isoformat()
+                    }, f)
             else:
-                print(f"Warning: Data directory {data_dir} does not exist")
+                print(f"[{mode}] 警告: 数据目录 {data_dir} 不存在")
 
-        print(f"Loaded {len(self.image_paths)} images for {mode} dataset")
+        print(f"[{mode}] 已加载 {len(self.image_paths)} 张图片")
 
     def __len__(self):
         return len(self.image_paths)
