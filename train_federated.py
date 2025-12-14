@@ -52,7 +52,7 @@ def setup_experiment(args):
 
 import copy # 确保引入 copy
 
-def create_clients(n_clients, model_template, foogd_template, client_loaders, device, model_type='densenet169', compute_aug_features=True, freeze_bn=True, base_lr=0.001, algorithm='fedrod'):
+def create_clients(n_clients, model_template, foogd_template, client_loaders, device, model_type='densenet169', compute_aug_features=True, freeze_bn=True, base_lr=0.001, algorithm='fedrod', use_taxonomy=False):
     """创建客户端 (修正版)"""
     clients = []
     # 注意：compute_aug_features 和 freeze_bn 参数目前未被使用
@@ -84,7 +84,8 @@ def create_clients(n_clients, model_template, foogd_template, client_loaders, de
             compute_aug_features=compute_aug_features,
             freeze_bn=freeze_bn,
             base_lr=base_lr,  # 传递基础学习率
-            algorithm=algorithm  # 传递算法选择
+            algorithm=algorithm,  # 传递算法选择
+            use_taxonomy=use_taxonomy  # 传递层级损失开关
         )
         clients.append(client)
 
@@ -184,7 +185,8 @@ def federated_training(args):
         compute_aug_features=args.compute_aug_features,
         freeze_bn=args.freeze_bn,
         base_lr=args.base_lr if hasattr(args, 'base_lr') else 0.001,  # 使用参数或默认值
-        algorithm=args.algorithm  # 传递算法选择
+        algorithm=args.algorithm,  # 传递算法选择
+        use_taxonomy=args.use_taxonomy  # 传递层级损失开关
     )
 
     # [关键修复 1] 如果有检查点，恢复每个 Client 的 Head-P
@@ -584,6 +586,8 @@ def main():
     parser.add_argument('--algorithm', type=str, default='fedrod',
                        choices=['fedavg', 'fedrod'],
                        help='选择算法: fedavg (纯全局模型) 或 fedrod (双头个性化模型)')
+    parser.add_argument('--use_taxonomy', action='store_true', default=False,
+                       help='启用层级感知损失函数 (Taxonomy-Aware Loss)')
 
     # 评估和保存
     parser.add_argument('--eval_frequency', type=int, default=1,

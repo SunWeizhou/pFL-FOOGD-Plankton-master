@@ -13,10 +13,14 @@ import numpy as np  # 必须导入 numpy
 import torchvision.transforms as transforms
 from sklearn.metrics import roc_auc_score
 
+from models import TaxonomyLoss
+
 class FLClient:
     """联邦学习客户端"""
 
-    def __init__(self, client_id, model, foogd_module, train_loader, device, compute_aug_features=True, freeze_bn=True, base_lr=0.001, algorithm='fedrod'):
+    def __init__(self, client_id, model, foogd_module, train_loader, device,
+                 compute_aug_features=True, freeze_bn=True, base_lr=0.001,
+                 algorithm='fedrod', use_taxonomy=False):  # <--- 新增参数
         self.client_id = client_id
         self.model = model
         self.foogd_module = foogd_module
@@ -26,6 +30,16 @@ class FLClient:
         self.freeze_bn = freeze_bn
         self.base_lr = base_lr  # 基础学习率，可根据 batch_size 调整
         self.algorithm = algorithm  # 算法选择: 'fedavg' 或 'fedrod'
+        self.use_taxonomy = use_taxonomy  # <--- 保存开关状态
+
+        # 2. 根据开关初始化 Loss 函数
+        # 只有在开启 Taxonomy 且处于 FedRoD 模式时才需要初始化它
+        if self.use_taxonomy and self.algorithm == 'fedrod':
+            print(f"Client {self.client_id}: Taxonomy-Aware Loss 已启用 ✅")
+            # 这里的 lambda_t=0.5 是层级惩罚的权重，可以作为参数传进来
+            self.tax_loss_fn = TaxonomyLoss(num_classes=54, lambda_t=0.5, device=self.device)
+        else:
+            self.tax_loss_fn = None
 
         # 1. 在初始化时定义优化器 (只做一次)
         self.optimizer_main = torch.optim.SGD(
@@ -155,15 +169,29 @@ class FLClient:
                     features_norm = F.normalize(features, p=2, dim=1)
                     features_aug_norm = F.normalize(features_aug, p=2, dim=1)
 
-                    loss_g = F.cross_entropy(logits_g, targets)
+                    # =================================================
+                    # 3. 这里的 Loss 计算逻辑要改成带开关的
+                    # =================================================
+
+                    # --- 计算 Head-P 的 Loss (永远是 CrossEntropy) ---
                     loss_p = F.cross_entropy(logits_p, targets)
 
-                    # 根据算法选择 Loss
+                    # --- 计算 Head-G 的 Loss (根据开关决定) ---
                     if self.algorithm == 'fedavg':
-                        # FedAvg 模式：只优化全局头，Head-P 不参与梯度回传
+                        # FedAvg 模式：通常只看 logits_g，且没有 Personal Head
+                        # 如果你想在 FedAvg 上也做实验，也可以在这里加 if self.use_taxonomy
+                        loss_g = F.cross_entropy(logits_g, targets)
                         classification_loss = loss_g
-                    else:
-                        # FedRoD 模式：双头共同优化 (默认逻辑)
+
+                    else: # FedRoD 模式
+                        if self.use_taxonomy and self.tax_loss_fn is not None:
+                            # 【开启】使用 Taxonomy Loss 约束通用头
+                            loss_g = self.tax_loss_fn(logits_g, targets)
+                        else:
+                            # 【关闭】使用普通的 CrossEntropy
+                            loss_g = F.cross_entropy(logits_g, targets)
+
+                        # FedRoD 总分类 Loss
                         classification_loss = loss_g + loss_p
 
                     # [修复] 初始化所有损失变量

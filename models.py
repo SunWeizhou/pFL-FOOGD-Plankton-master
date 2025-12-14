@@ -13,6 +13,8 @@ import torch.nn.functional as F
 from torchvision import models
 from torchvision.models import DenseNet121_Weights, DenseNet169_Weights
 
+from data_utils import build_taxonomy_matrix
+
 
 class DenseNetBackbone(nn.Module):
     """DenseNet骨干网络 - 特征提取器"""
@@ -362,3 +364,77 @@ if __name__ == "__main__":
     if foogd_module:
         foogd_params = sum(p.numel() for p in foogd_module.parameters())
         print(f"FOOGD模块参数: {foogd_params:,}")
+
+
+class TaxonomyLoss(nn.Module):
+    """
+    层级感知损失函数 (Taxonomy-Aware Loss)
+    Loss = CrossEntropy + lambda * Expected_Tree_Distance
+
+    理论支撑：Tree-Regularized Loss 或 Cost-Sensitive Learning
+    """
+    def __init__(self, num_classes=54, lambda_t=0.5, device='cuda'):
+        """
+        初始化层级感知损失函数
+
+        Args:
+            num_classes: 类别数量，默认为54个ID类别
+            lambda_t: 层级正则化项的权重系数
+            device: 计算设备
+        """
+        super(TaxonomyLoss, self).__init__()
+        self.num_classes = num_classes
+        self.lambda_t = lambda_t
+        # 延迟导入以避免循环依赖
+        from data_utils import build_taxonomy_matrix
+        # 获取代价矩阵 (固定不可训练)
+        self.matrix = build_taxonomy_matrix(num_classes, device)
+
+    def forward(self, logits, targets):
+        """
+        前向传播计算损失
+
+        Args:
+            logits: 模型输出 [Batch, Classes]
+            targets: 真实标签 [Batch]
+
+        Returns:
+            total_loss: 总损失 = 交叉熵损失 + lambda_t * 期望代价
+        """
+        # 1. 基础分类损失 (Cross Entropy)
+        ce_loss = F.cross_entropy(logits, targets)
+
+        # 2. 层级正则化项
+        # 计算预测的概率分布 P(y_pred | x)
+        probs = F.softmax(logits, dim=1)  # [B, 54]
+
+        # 获取每个样本对应的真实类别的代价行向量
+        # targets 维度 [B], matrix 维度 [54, 54]
+        # selected_costs 维度 [B, 54] -> 第 i 行表示真实类别 targets[i] 到其他所有类别的距离
+        selected_costs = self.matrix[targets]
+
+        # 计算期望代价 (Expected Cost)
+        # sum( P(j) * Distance(truth, j) )
+        # 如果模型把高概率给了距离 truth 很远的类别，这个值会很大
+        tree_reg = torch.sum(probs * selected_costs, dim=1).mean()
+
+        # 3. 总损失
+        total_loss = ce_loss + self.lambda_t * tree_reg
+
+        return total_loss
+
+    def get_expected_cost(self, logits, targets):
+        """
+        计算期望代价（不包含交叉熵损失）
+
+        Args:
+            logits: 模型输出 [Batch, Classes]
+            targets: 真实标签 [Batch]
+
+        Returns:
+            expected_cost: 期望代价
+        """
+        probs = F.softmax(logits, dim=1)
+        selected_costs = self.matrix[targets]
+        expected_cost = torch.sum(probs * selected_costs, dim=1).mean()
+        return expected_cost

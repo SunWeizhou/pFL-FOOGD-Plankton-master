@@ -86,6 +86,7 @@ Key parameters:
 - `--client_fraction`: Fraction of clients selected per round (default: 1.0)
 - `--model_type`: Backbone network (`densenet121` or `densenet169`)
 - `--use_foogd`: Enable/disable FOOGD module (flag)
+- `--use_taxonomy`: Enable/disable Taxonomy-Aware Loss (flag)
 - `--image_size`: Input image size (default: 224)
 - `--eval_frequency`: Evaluation frequency in rounds (default: 5)
 - `--save_frequency`: Checkpoint save frequency (default: 10)
@@ -131,11 +132,13 @@ pFL-FOOGD-Plankton-master-main/
   - `FedRoD_Model`: Dual-head architecture with generic and personal classifiers
   - `FOOGD_Module`: Integrates SAG and SM3D for OOD handling
   - `ScoreModel`: Lightweight network for score matching
+  - `TaxonomyLoss`: Taxonomy-aware loss function for biological hierarchy learning
   - **Key modifications**: KSD loss normalization (`ksd / dim`) in `compute_ksd_loss()`
 
 - **`client.py`**: Federated learning client implementation
   - `FLClient`: Handles local training, model updates, and evaluation
   - Uses separate optimizers for main model and FOOGD components
+  - **Taxonomy-Aware Loss**: Optional taxonomy-aware loss for Head-G with `use_taxonomy` switch
   - **Key parameters**: `target_lambda_ksd = 0.01`, `target_lambda_sm = 0.1`
 
 - **`server.py`**: Federated learning server implementation
@@ -145,6 +148,7 @@ pFL-FOOGD-Plankton-master-main/
 - **`data_utils.py`**: Data loading and federated data partitioning
   - Strict class definitions for ID (54), Near-OOD (26), and Far-OOD (12) categories
   - Dirichlet distribution for non-IID data partitioning
+  - `build_taxonomy_matrix()`: Builds biological taxonomy cost matrix for taxonomy-aware loss
 
 - **`train_federated.py`**: Main training script
   - Orchestrates federated learning rounds
@@ -205,7 +209,10 @@ python split_dataset.py
 2. **FOOGD Integration**: Combines SAG (feature regularization) and SM3D (OOD detection)
    - SAG uses KSD loss for feature space alignment
    - SM3D trains lightweight scoring model for OOD detection
-3. **Backbone Selection**: DenseNet-169/121 for feature extraction
+3. **Taxonomy-Aware Loss**: Optional biological hierarchy learning for Head-G
+   - Uses cost matrix based on biological taxonomy (species → genus → order → class → phylum)
+   - Encourages models to make biologically reasonable mistakes
+4. **Backbone Selection**: DenseNet-169/121 for feature extraction
    - Pre-trained on ImageNet for transfer learning
    - Feature dimensions: 1664 (DenseNet-169) or 1024 (DenseNet-121)
 
@@ -242,6 +249,22 @@ python split_dataset.py
 - **OOD Detection**: Based on score model norm (higher norm = more likely OOD)
   - Computes AUROC and FPR95 for Near-OOD and Far-OOD separately
 
+### Taxonomy-Aware Loss (Biological Hierarchy Learning)
+- **Cost Matrix**: Hierarchical biological taxonomy cost matrix with 5 levels:
+  - Level 1 (distance=1.0): Same genus/extremely similar morphology
+  - Level 2 (distance=2.0): Same order/class (e.g., Copepoda, Malacostraca)
+  - Level 3 (distance=3.0): Same phylum (e.g., Arthropoda)
+  - Level 4 (distance=4.0): Different phylum but similar morphology (e.g., single-celled algae)
+  - Level 5 (distance=5.0): Completely different domains
+- **Loss Formula**: `TaxonomyLoss = CrossEntropy + λ × Expected_Tree_Distance`
+  - `Expected_Tree_Distance = Σ P(j) × Distance(truth, j)`
+  - `λ = 0.5` by default (configurable)
+- **Application**: Applied only to Head-G (generic head) in FedRoD mode
+- **Biological Groups**: Defined based on plankton taxonomy:
+  - Polychaeta, Acartia, Calanoid, Amphipoda groups
+  - Copepoda (桡足类), Malacostraca (软甲纲), Cladocera (枝角类)
+  - Arthropoda (节肢动物门)
+
 ### Optimization and Training Flow
 1. **Initialization**: Create FedRoD model with DenseNet backbone
 2. **Client Setup**: Distribute non-IID data using Dirichlet distribution (`--alpha`)
@@ -260,6 +283,7 @@ python split_dataset.py
 - **Mixed Precision**: Supported via `torch.amp` for memory efficiency
 - **Gradient Clipping**: Applied to prevent exploding gradients
 - **KSD Loss Normalization**: KSD loss is normalized by feature dimension (1024 for DenseNet121, 1664 for DenseNet169) to match classification loss scale
+- **Taxonomy Loss**: `TaxonomyLoss = CrossEntropy + λ × Expected_Tree_Distance` with `λ=0.5` by default
 - **Target Lambda Values**:
   - `target_lambda_ksd = 0.01` in client.py (after normalization)
   - `target_lambda_sm = 0.1` in client.py
@@ -372,8 +396,10 @@ python visualize_experiments.py --experiment_dirs experiments/alpha0.1_no_foogd 
 Typical experiment configurations:
 1. **Baseline (no FOOGD)**: `--alpha 0.5 --model_type densenet121`
 2. **FOOGD-enabled**: `--alpha 0.5 --model_type densenet121 --use_foogd`
-3. **Extreme heterogeneity**: `--alpha 0.1` (completely isolated sites)
-4. **IID-like**: `--alpha 5.0` or `--alpha 10.0` (well-mixed data)
+3. **Taxonomy-enabled**: `--alpha 0.5 --model_type densenet121 --use_taxonomy`
+4. **FOOGD+Taxonomy**: `--alpha 0.5 --model_type densenet121 --use_foogd --use_taxonomy`
+5. **Extreme heterogeneity**: `--alpha 0.1` (completely isolated sites)
+6. **IID-like**: `--alpha 5.0` or `--alpha 10.0` (well-mixed data)
 
 Common client configurations:
 - `--n_clients 5` or `10` (fewer clients for faster experiments)

@@ -429,3 +429,119 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"数据加载测试失败: {e}")
         print("请确保数据集已正确划分并放置在指定目录")
+
+
+def build_taxonomy_matrix(num_classes=54, device='cpu'):
+    """
+    为 DYB-PlanktonNet (54类) 构建生物分类学代价矩阵
+    基于真实的生物学层级: 种 -> 属 -> 目 -> 纲 -> 门
+    """
+    # 初始化为最大距离 (跨门/界)
+    M = torch.ones((num_classes, num_classes), device=device) * 5.0
+    M.fill_diagonal_(0.0)
+
+    # 1. 定义生物学分组 (Grouping)
+    # 键是组名，值是该组包含的关键词或具体名称
+    # 顺序代表优先级，越具体越好
+
+    # === Level 1: 细粒度分组 (距离=1.0) - 形态极其相似/同属 ===
+    # 比如 Polychaeta 内部，Acartia 内部
+    close_groups = {
+        'Polychaeta_Group': ['Polychaeta'],
+        'Acartia_Group': ['Acartia'],
+        'Calanoid_General': ['Calanoid'], # 泛指的哲水蚤
+        'Amphipoda_Group': ['Amphipoda', 'Gammarids', 'Caprella'], # 端足类通常长得比较像
+        'Shrimp_Larvae': ['Shrimp-like', 'Macrura', 'Lucifer'], # 虾类幼体
+        'Crab_Larvae': ['Megalopa', 'Porcrellanidae'], # 蟹类幼体
+        'Oithona_Group': ['Oithona'],
+        'Cumacea_Group': ['Cumacea'],
+    }
+
+    # === Level 2: 中粒度分组 (距离=2.0) - 同纲/同目 ===
+    # 比如都是桡足类 (Copepods)，或者都是甲壳动物 (Crustaceans)
+    medium_groups = {
+        # 桡足类大本营 (Copepoda)
+        'Copepoda': [
+            'Acartia', 'Calanopia', 'Labidocera', 'Tortanus', 'Calanoid',
+            'Oithona', 'Cyclopoid', 'Harpacticoid', 'Microsetella',
+            'Caligus', 'Copepod'
+        ],
+        # 软甲纲 (Malacostraca) - 虾蟹虫
+        'Malacostraca': [
+            'Caprella', 'Amphipoda', 'Gammarids', 'Cymodoce',
+            'Lucifer', 'Macrura', 'Megalopa', 'Porcrellanidae',
+            'Shrimp-like', 'Cumacea'
+        ],
+        # 枝角类 (Cladocera)
+        'Cladocera': ['Penilia avirostris', 'Evadne tergestina'],
+        # 被囊动物 (Tunicata)
+        'Tunicata_Phylum': ['Oikopleura', 'Tunicata']
+    }
+
+    # === Level 3: 粗粒度分组 (距离=3.0) - 同门 (Phylum) ===
+    # 比如都是节肢动物 (Arthropoda)
+    coarse_groups = {
+        'Arthropoda': [
+            # 包含上面的 Copepoda, Malacostraca, Cladocera
+            'Acartia', 'Calanopia', 'Labidocera', 'Tortanus', 'Calanoid',
+            'Oithona', 'Cyclopoid', 'Harpacticoid', 'Microsetella',
+            'Caligus', 'Copepod',
+            'Caprella', 'Amphipoda', 'Gammarids', 'Cymodoce',
+            'Lucifer', 'Macrura', 'Megalopa', 'Porcrellanidae',
+            'Shrimp-like', 'Cumacea',
+            'Penilia avirostris', 'Evadne tergestina'
+        ]
+    }
+
+    # 2. 辅助函数：找到名称对应的所有索引
+    def get_indices(keywords):
+        indices = []
+        for idx, name in enumerate(ID_CLASSES):
+            # 只要命中列表里任何一个关键词即可
+            for k in keywords:
+                if k in name:
+                    indices.append(idx)
+                    break
+        return indices
+
+    # 3. 填充矩阵 (注意顺序：先大后小，这样小距离会覆盖大距离)
+
+    # Step A: 填充 Level 3 (同门, dist=3.0)
+    for group, keywords in coarse_groups.items():
+        idxs = get_indices(keywords)
+        for i in idxs:
+            for j in idxs:
+                if i != j: M[i, j] = 3.0
+
+    # Step B: 填充 Level 2 (同纲/目, dist=2.0)
+    for group, keywords in medium_groups.items():
+        idxs = get_indices(keywords)
+        for i in idxs:
+            for j in idxs:
+                if i != j: M[i, j] = 2.0
+
+    # Step C: 填充 Level 1 (同属/极似, dist=1.0)
+    for group, keywords in close_groups.items():
+        idxs = get_indices(keywords)
+        for i in idxs:
+            for j in idxs:
+                if i != j: M[i, j] = 1.0
+
+    # 4. 特殊处理 (Specific Fixes)
+    # 你可以在这里手动微调一些特定的关系
+    # 例如: 夜光藻(Noctiluca) 和 棕囊藻(Phaeocystis) 虽然不同门，但都是单细胞藻类/原生生物，
+    # 在形态上有时会被混淆，可以设个距离 4.0 而不是 5.0
+    # 找到夜光藻和棕囊藻的索引
+    noctiluca_idx = None
+    phaeocystis_idx = None
+    for idx, name in enumerate(ID_CLASSES):
+        if name == "Noctiluca scintillans":
+            noctiluca_idx = idx
+        elif name == "Phaeocystis globosa":
+            phaeocystis_idx = idx
+
+    if noctiluca_idx is not None and phaeocystis_idx is not None:
+        M[noctiluca_idx, phaeocystis_idx] = 4.0
+        M[phaeocystis_idx, noctiluca_idx] = 4.0
+
+    return M
