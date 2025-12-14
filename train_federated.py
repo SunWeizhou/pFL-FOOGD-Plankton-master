@@ -331,6 +331,7 @@ def federated_training(args):
             'test_losses': [],
             'tail_accuracies': [],      # 尾部类别准确率
             'hierarchical_errors': [],  # 层级错误
+            'hierarchical_ratios': [],  # 层级准确率 (0~1) <--- 新增
             'inc_accuracies': [],       # IN-C 准确率
             'near_auroc': [],           # Near-OOD AUROC
             'far_auroc': [],            # Far-OOD AUROC
@@ -403,15 +404,19 @@ def federated_training(args):
             if args.algorithm == 'fedavg':
                 print("评估模式: FedAvg (Global Model 承担所有任务)")
 
-                # 1. 基础指标 (ID Acc, Tail Acc, Hierarchical Error)
-                id_acc, tail_acc, hier_err = evaluate_accuracy_metrics(
-                    server.global_model, test_loader, taxonomy_matrix, tail_classes_set, device
+                # 1. 基础指标 (ID Acc, Tail Acc, Hierarchical Error, Hier Accuracy)
+                # [修正] 传入 use_head_g=True
+                id_acc, tail_acc, hier_err, hier_ratio = evaluate_accuracy_metrics(
+                    server.global_model, test_loader, taxonomy_matrix, tail_classes_set, device,
+                    use_head_g=True  # <--- 关键修正！告诉它读 Head-G
                 )
 
                 # 2. 泛化指标 (IN-C Acc)
                 # 注意：这里直接复用 accuracy metrics 函数，但传入 IN-C loader
-                inc_acc, _, _ = evaluate_accuracy_metrics(
-                    server.global_model, inc_loader, taxonomy_matrix, tail_classes_set, device
+                # [修正] 传入 use_head_g=True
+                inc_acc, _, _, _ = evaluate_accuracy_metrics(
+                    server.global_model, inc_loader, taxonomy_matrix, tail_classes_set, device,
+                    use_head_g=True  # <--- 关键修正！
                 )
 
                 # 3. OOD 指标 (Near/Far AUROC)
@@ -426,6 +431,7 @@ def federated_training(args):
                     'acc_id': id_acc,
                     'acc_tail': tail_acc,
                     'err_hier': hier_err,
+                    'hier_ratio': hier_ratio,  # <--- 新增层级准确率
                     'acc_inc': inc_acc,
                     'near_auroc': test_metrics.get('near_auroc', 0.0),
                     'far_auroc': test_metrics.get('far_auroc', 0.0),
@@ -443,30 +449,35 @@ def federated_training(args):
 
                 # --- Part 1: 评估 Head-P (Acc, Tail, Hier, IN-C) ---
                 # 策略：在所有 Client 上测试，取平均值
-                p_acc_list, p_tail_list, p_hier_list, p_inc_list = [], [], [], []
+                p_acc_list, p_tail_list, p_hier_list, p_hier_ratio_list, p_inc_list = [], [], [], [], []
 
                 for client in clients:
                     # 使用客户端本地的测试集 (或者全局测试集，取决于你的设定，通常 Acc 看本地或全局皆可)
                     # 建议：为了公平对比，这里统一用 全局测试集 test_loader
                     # 注意：Client 模型 forward 时，FedRoD 会返回 (logits_g, logits_p, z)，
-                    # evaluate_accuracy_metrics 内部会自动取 logits_p
+                    # evaluate_accuracy_metrics 内部会根据 use_head_g 参数选择头
 
-                    c_id, c_tail, c_hier = evaluate_accuracy_metrics(
-                        client.model, test_loader, taxonomy_matrix, tail_classes_set, device
+                    # FedRoD 的 Acc 依然看 Head-P，所以这里 use_head_g=False (默认值)
+                    c_id, c_tail, c_hier, c_hier_ratio = evaluate_accuracy_metrics(
+                        client.model, test_loader, taxonomy_matrix, tail_classes_set, device,
+                        use_head_g=False # <--- FedRoD 保持默认，读 Head-P
                     )
-                    c_inc, _, _ = evaluate_accuracy_metrics(
-                        client.model, inc_loader, taxonomy_matrix, tail_classes_set, device
+                    c_inc, _, _, _ = evaluate_accuracy_metrics(
+                        client.model, inc_loader, taxonomy_matrix, tail_classes_set, device,
+                        use_head_g=False # <--- FedRoD 保持默认
                     )
 
                     p_acc_list.append(c_id)
                     p_tail_list.append(c_tail)
                     p_hier_list.append(c_hier)
+                    p_hier_ratio_list.append(c_hier_ratio)
                     p_inc_list.append(c_inc)
 
                 # 计算平均值
                 avg_p_acc = sum(p_acc_list) / len(p_acc_list) if p_acc_list else 0.0
                 avg_p_tail = sum(p_tail_list) / len(p_tail_list) if p_tail_list else 0.0
                 avg_p_hier = sum(p_hier_list) / len(p_hier_list) if p_hier_list else 0.0
+                avg_p_hier_ratio = sum(p_hier_ratio_list) / len(p_hier_ratio_list) if p_hier_ratio_list else 0.0
                 avg_p_inc = sum(p_inc_list) / len(p_inc_list) if p_inc_list else 0.0
 
                 # --- Part 2: 评估 Head-G (OOD AUROC) ---
@@ -481,6 +492,7 @@ def federated_training(args):
                     'acc_id': avg_p_acc,       # Head-P
                     'acc_tail': avg_p_tail,    # Head-P
                     'err_hier': avg_p_hier,    # Head-P
+                    'hier_ratio': avg_p_hier_ratio,  # <--- 新增层级准确率
                     'acc_inc': avg_p_inc,      # Head-P
                     'near_auroc': test_metrics.get('near_auroc', 0.0), # Head-G
                     'far_auroc': test_metrics.get('far_auroc', 0.0),    # Head-G
@@ -491,7 +503,8 @@ def federated_training(args):
             # --- 打印和保存日志 ---
             print(f"  [Result] ID Acc: {current_metrics['acc_id']:.4f}")
             print(f"  [Result] Tail Acc: {current_metrics['acc_tail']:.4f}")
-            print(f"  [Result] Hier Error: {current_metrics['err_hier']:.4f}")
+            print(f"  [Result] Hier Error: {current_metrics['err_hier']:.4f} (Lower is better)")
+            print(f"  [Result] Hier Score: {current_metrics['hier_ratio']:.4f} (Ratio: 0~1)")
             print(f"  [Result] IN-C Acc: {current_metrics['acc_inc']:.4f}")
             print(f"  [Result] Near AUROC: {current_metrics['near_auroc']:.4f}")
             print(f"  [Result] Far AUROC: {current_metrics['far_auroc']:.4f}")
@@ -502,6 +515,7 @@ def federated_training(args):
             training_history['test_losses'].append(current_metrics['id_loss'])
             training_history['tail_accuracies'].append(current_metrics['acc_tail'])
             training_history['hierarchical_errors'].append(current_metrics['err_hier'])
+            training_history['hierarchical_ratios'].append(current_metrics['hier_ratio'])  # <--- 新增层级准确率
             training_history['inc_accuracies'].append(current_metrics['acc_inc'])
             training_history['near_auroc'].append(current_metrics['near_auroc'])
             training_history['far_auroc'].append(current_metrics['far_auroc'])

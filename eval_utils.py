@@ -70,9 +70,10 @@ def compute_hierarchical_error(predictions, targets, taxonomy_matrix):
     return cost_sum / len(targets)
 
 
-def evaluate_accuracy_metrics(model, dataloader, taxonomy_matrix, tail_classes_set, device):
+def evaluate_accuracy_metrics(model, dataloader, taxonomy_matrix, tail_classes_set, device, use_head_g=False):
     """
-    计算 ID Acc, Tail Acc, Hierarchical Error
+    计算 ID Acc, Tail Acc, Hier Error, 以及 [新增] Hier Accuracy
+    use_head_g: 如果为 True，强制使用 Generic Head (索引0); 否则默认使用 Personalized Head (索引1)
 
     Args:
         model: 模型
@@ -80,9 +81,10 @@ def evaluate_accuracy_metrics(model, dataloader, taxonomy_matrix, tail_classes_s
         taxonomy_matrix: 分类学代价矩阵
         tail_classes_set: 尾部类别集合
         device: 设备
+        use_head_g: 是否使用 Generic Head 进行评估
 
     Returns:
-        tuple: (id_acc, tail_acc, hier_error)
+        tuple: (id_acc, tail_acc, hier_error, hier_acc)
     """
     model.eval()
     correct = 0
@@ -99,13 +101,15 @@ def evaluate_accuracy_metrics(model, dataloader, taxonomy_matrix, tail_classes_s
         for inputs, labels in dataloader:
             inputs, labels = inputs.to(device), labels.to(device)
 
-            # FedRoD 的模型可能返回 (logits_g, logits_p, features)，我们需要 logits_p
-            # 兼容处理：如果是元组，取第二个（Head-P）；如果不是，直接用
+            # FedRoD 的模型可能返回 (logits_g, logits_p, features)
+            # 兼容处理：如果是元组，根据 use_head_g 参数选择头；如果不是，直接用
             outputs = model(inputs)
             if isinstance(outputs, tuple):
-                # 约定: FedRoD 返回 (logits_g, logits_p, features)
-                # 对于 Acc 评估，我们要用 logits_p
-                logits = outputs[1]
+                # [修正逻辑] 根据参数选择头
+                if use_head_g:
+                    logits = outputs[0]  # FedAvg 或 FedRoD-Generic 评估时用这个
+                else:
+                    logits = outputs[1]  # FedRoD-Personalized 评估时用这个
             else:
                 logits = outputs
 
@@ -131,15 +135,24 @@ def evaluate_accuracy_metrics(model, dataloader, taxonomy_matrix, tail_classes_s
     # 2. Tail Accuracy
     tail_acc = tail_correct / tail_total if tail_total > 0 else 0.0
 
-    # 3. Hierarchical Error
+    # 3. 层级指标计算
     if all_preds:
         all_preds = torch.cat(all_preds)
         all_targets = torch.cat(all_targets)
+
+        # [原始] 平均层级错误 (0.0 - 5.0)
         hier_error = compute_hierarchical_error(all_preds, all_targets, taxonomy_matrix)
+
+        # [新增] 层级准确率 (0.0 - 1.0)
+        # 假设最大代价是 5.0 (你在 data_utils.py 里定义的)
+        max_cost = 5.0
+        hier_acc = 1.0 - (hier_error / max_cost)
     else:
         hier_error = 0.0
+        hier_acc = 0.0
 
-    return id_acc, tail_acc, hier_error
+    # 返回值增加一个 hier_acc
+    return id_acc, tail_acc, hier_error, hier_acc
 
 
 def evaluate_id_performance(model, data_loader, device, num_classes=54):
@@ -195,11 +208,14 @@ def evaluate_id_performance(model, data_loader, device, num_classes=54):
     # 计算指标
     accuracy = accuracy_score(all_targets, all_preds)
 
-    # 计算每个类别的准确率
+    # 计算每个类别的准确率和样本数量
     class_accuracy = {}
+    class_sample_counts = {}
     for class_idx in range(num_classes):
         class_mask = all_targets == class_idx
-        if np.sum(class_mask) > 0:
+        class_count = np.sum(class_mask)
+        class_sample_counts[class_idx] = class_count
+        if class_count > 0:
             class_acc = accuracy_score(all_targets[class_mask], all_preds[class_mask])
             class_accuracy[class_idx] = class_acc
 
@@ -209,6 +225,7 @@ def evaluate_id_performance(model, data_loader, device, num_classes=54):
     metrics = {
         'accuracy': accuracy,
         'class_accuracy': class_accuracy,
+        'class_sample_counts': class_sample_counts,
         'confusion_matrix': cm,
         'predictions': all_preds,
         'targets': all_targets,
@@ -400,28 +417,57 @@ def plot_ood_detection_results(id_scores, ood_scores, output_path):
     plt.close()
 
 
-def plot_confusion_matrix(cm, class_names, output_path):
+def plot_long_tail_performance(class_accs, class_sample_counts, class_names, output_path):
     """
-    绘制混淆矩阵
-
-    Args:
-        cm: 混淆矩阵
-        class_names: 类别名称
-        output_path: 输出路径
+    绘制长尾分布性能图
+    class_accs: dict, {class_id: accuracy}
+    class_sample_counts: dict, {class_id: sample_count}
     """
-    plt.figure(figsize=(12, 10))
+    # 1. 整理数据并排序
+    data = []
+    for cid in class_accs:
+        data.append({
+            'id': cid,
+            'name': class_names[cid],
+            'acc': class_accs[cid],
+            'count': class_sample_counts.get(cid, 0)
+        })
 
-    # 归一化混淆矩阵
-    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    # 按样本数从大到小排序 (Head -> Tail)
+    data.sort(key=lambda x: x['count'], reverse=True)
 
-    sns.heatmap(cm_normalized, annot=True, fmt='.2f', cmap='Blues',
-                xticklabels=class_names[:10], yticklabels=class_names[:10])  # 只显示前10个类别
+    sorted_names = [x['name'] for x in data]
+    sorted_accs = [x['acc'] for x in data]
+    sorted_counts = [x['count'] for x in data]
+    indices = np.arange(len(data))
 
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.title('Confusion Matrix (Normalized)')
+    fig, ax1 = plt.subplots(figsize=(15, 6))
+
+    # 2. 绘制样本数量 (背景柱状图) -以此展示长尾分布
+    color = 'tab:gray'
+    ax1.set_xlabel('Classes (Sorted by Sample Frequency)', fontsize=12)
+    ax1.set_ylabel('Number of Samples (Log Scale)', color=color, fontsize=12)
+    ax1.bar(indices, sorted_counts, color=color, alpha=0.3, label='Sample Count')
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.set_yscale('log') # 长尾通常用对数坐标好看
+
+    # 3. 绘制准确率 (折线图)
+    ax2 = ax1.twinx()  # 共享X轴
+    color = 'tab:blue'
+    ax2.set_ylabel('Test Accuracy', color=color, fontsize=12)
+    ax2.plot(indices, sorted_accs, color=color, marker='o', linewidth=2, markersize=4, label='Accuracy')
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.set_ylim(0, 1.05)
+
+    # 添加 Head/Tail 分界线
+    mid_point = int(len(data) * 0.5)
+    ax1.axvline(x=mid_point, color='red', linestyle='--', alpha=0.5)
+    ax1.text(mid_point+1, 0.1, 'Tail Classes ->', color='red', fontsize=12)
+    ax1.text(mid_point-5, 0.1, '<- Head Classes', color='red', fontsize=12)
+
+    ax1.set_title('Class-wise Performance over Long-tailed Distribution', fontsize=14)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.savefig(output_path, dpi=300)
     plt.close()
 
 
@@ -452,11 +498,12 @@ def generate_evaluation_report(model, foogd_module, test_loader, near_ood_loader
     id_metrics = evaluate_id_performance(model, test_loader, device)
     report['id_classification'] = id_metrics
 
-    # 绘制混淆矩阵
-    plot_confusion_matrix(
-        id_metrics['confusion_matrix'],
+    # 绘制长尾分布性能图
+    plot_long_tail_performance(
+        id_metrics['class_accuracy'],
+        id_metrics['class_sample_counts'],
         [f'Class_{i}' for i in range(54)],
-        os.path.join(output_dir, 'confusion_matrix.png')
+        os.path.join(output_dir, 'long_tail_performance.png')
     )
 
     # 2. Near-OOD检测评估
@@ -523,9 +570,15 @@ if __name__ == "__main__":
     plot_ood_detection_results(id_scores, ood_scores, "test_ood_detection.png")
     print("OOD检测结果图已保存: test_ood_detection.png")
 
-    # 测试混淆矩阵
-    cm = np.random.randint(0, 100, (10, 10))
-    plot_confusion_matrix(cm, [f'Class_{i}' for i in range(10)], "test_confusion_matrix.png")
-    print("混淆矩阵图已保存: test_confusion_matrix.png")
+    # 测试长尾分布性能图
+    class_accs = {i: np.random.uniform(0.3, 0.9) for i in range(10)}
+    class_sample_counts = {i: int(np.random.exponential(100)) for i in range(10)}
+    plot_long_tail_performance(
+        class_accs,
+        class_sample_counts,
+        [f'Class_{i}' for i in range(10)],
+        "test_long_tail_performance.png"
+    )
+    print("长尾分布性能图已保存: test_long_tail_performance.png")
 
     print("评估工具测试完成!")
