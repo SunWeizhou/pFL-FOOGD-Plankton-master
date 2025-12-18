@@ -373,22 +373,19 @@ class TaxonomyLoss(nn.Module):
 
     理论支撑：Tree-Regularized Loss 或 Cost-Sensitive Learning
     """
-    def __init__(self, num_classes=54, lambda_t=0.5, device='cuda'):
+    def __init__(self, taxonomy_matrix, lambda_t=0.5):
         """
         初始化层级感知损失函数
 
         Args:
-            num_classes: 类别数量，默认为54个ID类别
+            taxonomy_matrix: 分类学代价矩阵 [num_classes, num_classes]
             lambda_t: 层级正则化项的权重系数
-            device: 计算设备
         """
         super(TaxonomyLoss, self).__init__()
-        self.num_classes = num_classes
         self.lambda_t = lambda_t
-        # 延迟导入以避免循环依赖
-        from data_utils import build_taxonomy_matrix
-        # 获取代价矩阵 (固定不可训练)
-        self.matrix = build_taxonomy_matrix(num_classes, device)
+        # 直接使用传入的矩阵
+        self.matrix = taxonomy_matrix
+        self.num_classes = taxonomy_matrix.size(0) if hasattr(taxonomy_matrix, 'size') else taxonomy_matrix.shape[0]
 
     def forward(self, logits, targets):
         """

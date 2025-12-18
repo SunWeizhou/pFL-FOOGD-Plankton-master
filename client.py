@@ -20,7 +20,7 @@ class FLClient:
 
     def __init__(self, client_id, model, foogd_module, train_loader, device,
                  compute_aug_features=True, freeze_bn=True, base_lr=0.001,
-                 algorithm='fedrod', use_taxonomy=False):  # <--- 新增参数
+                 algorithm='fedrod', use_taxonomy=False, taxonomy_matrix=None):  # <--- 新增参数
         self.client_id = client_id
         self.model = model
         self.foogd_module = foogd_module
@@ -33,11 +33,21 @@ class FLClient:
         self.use_taxonomy = use_taxonomy  # <--- 保存开关状态
 
         # 2. 根据开关初始化 Loss 函数
-        # 只有在开启 Taxonomy 且处于 FedRoD 模式时才需要初始化它
-        if self.use_taxonomy and self.algorithm == 'fedrod':
-            print(f"Client {self.client_id}: Taxonomy-Aware Loss 已启用 ✅")
-            # 这里的 lambda_t=0.5 是层级惩罚的权重，可以作为参数传进来
-            self.tax_loss_fn = TaxonomyLoss(num_classes=54, lambda_t=0.5, device=self.device)
+        # 只要开了开关，就初始化 Taxonomy Loss
+        if self.use_taxonomy:  # 去掉算法限制，只要开了开关就初始化
+            if taxonomy_matrix is None:
+                # 如果未传入矩阵，则尝试构建（向后兼容）
+                try:
+                    from data_utils import build_taxonomy_matrix
+                    taxonomy_matrix = build_taxonomy_matrix(num_classes=54, device=self.device)
+                    print(f"Client {self.client_id}: 自动构建 Taxonomy 矩阵")
+                except Exception as e:
+                    print(f"Client {self.client_id}: 警告 - 无法构建 Taxonomy 矩阵: {e}")
+                    self.tax_loss_fn = None
+                    return
+            print(f"Client {self.client_id}: Taxonomy-Aware Loss 已启用 ✅ (Alg: {self.algorithm})")
+            # 使用传入的矩阵
+            self.tax_loss_fn = TaxonomyLoss(taxonomy_matrix=taxonomy_matrix, lambda_t=0.5)
         else:
             self.tax_loss_fn = None
 
@@ -176,22 +186,16 @@ class FLClient:
                     # --- 计算 Head-P 的 Loss (永远是 CrossEntropy) ---
                     loss_p = F.cross_entropy(logits_p, targets)
 
-                    # --- 计算 Head-G 的 Loss (根据开关决定) ---
-                    if self.algorithm == 'fedavg':
-                        # FedAvg 模式：通常只看 logits_g，且没有 Personal Head
-                        # 如果你想在 FedAvg 上也做实验，也可以在这里加 if self.use_taxonomy
+                    # --- 统一计算 Head-G 的 Loss ---
+                    if self.use_taxonomy and self.tax_loss_fn is not None:
+                        loss_g = self.tax_loss_fn(logits_g, targets)
+                    else:
                         loss_g = F.cross_entropy(logits_g, targets)
+
+                    # --- 根据算法组合总 Loss ---
+                    if self.algorithm == 'fedavg':
                         classification_loss = loss_g
-
-                    else: # FedRoD 模式
-                        if self.use_taxonomy and self.tax_loss_fn is not None:
-                            # 【开启】使用 Taxonomy Loss 约束通用头
-                            loss_g = self.tax_loss_fn(logits_g, targets)
-                        else:
-                            # 【关闭】使用普通的 CrossEntropy
-                            loss_g = F.cross_entropy(logits_g, targets)
-
-                        # FedRoD 总分类 Loss
+                    else: # FedRoD
                         classification_loss = loss_g + loss_p
 
                     # [修复] 初始化所有损失变量

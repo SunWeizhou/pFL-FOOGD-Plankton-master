@@ -124,7 +124,7 @@ def setup_experiment(args):
 
 import copy # 确保引入 copy
 
-def create_clients(n_clients, model_template, foogd_template, client_loaders, device, model_type='densenet169', compute_aug_features=True, freeze_bn=True, base_lr=0.001, algorithm='fedrod', use_taxonomy=False):
+def create_clients(n_clients, model_template, foogd_template, client_loaders, device, model_type='densenet169', compute_aug_features=True, freeze_bn=True, base_lr=0.001, algorithm='fedrod', use_taxonomy=False, taxonomy_matrix=None):
     """创建客户端 (修正版)"""
     clients = []
     # 注意：compute_aug_features 和 freeze_bn 参数目前未被使用
@@ -157,7 +157,8 @@ def create_clients(n_clients, model_template, foogd_template, client_loaders, de
             freeze_bn=freeze_bn,
             base_lr=base_lr,  # 传递基础学习率
             algorithm=algorithm,  # 传递算法选择
-            use_taxonomy=use_taxonomy  # 传递层级损失开关
+            use_taxonomy=use_taxonomy,  # 传递层级损失开关
+            taxonomy_matrix=taxonomy_matrix  # 传递分类学矩阵
         )
         clients.append(client)
 
@@ -276,7 +277,8 @@ def federated_training(args):
         freeze_bn=args.freeze_bn,
         base_lr=args.base_lr if hasattr(args, 'base_lr') else 0.001,  # 使用参数或默认值
         algorithm=args.algorithm,  # 传递算法选择
-        use_taxonomy=args.use_taxonomy  # 传递层级损失开关
+        use_taxonomy=args.use_taxonomy,  # 传递层级损失开关
+        taxonomy_matrix=taxonomy_matrix  # 传递分类学矩阵
     )
 
     # [关键修复 1] 如果有检查点，恢复每个 Client 的 Head-P
@@ -447,24 +449,28 @@ def federated_training(args):
             elif args.algorithm == 'fedrod':
                 print("评估模式: FedRoD (Acc->Head-P, OOD->Head-G)")
 
-                # --- Part 1: 评估 Head-P (Acc, Tail, Hier, IN-C) ---
-                # 策略：在所有 Client 上测试，取平均值
                 p_acc_list, p_tail_list, p_hier_list, p_hier_ratio_list, p_inc_list = [], [], [], [], []
 
-                for client in clients:
-                    # 使用客户端本地的测试集 (或者全局测试集，取决于你的设定，通常 Acc 看本地或全局皆可)
-                    # 建议：为了公平对比，这里统一用 全局测试集 test_loader
-                    # 注意：Client 模型 forward 时，FedRoD 会返回 (logits_g, logits_p, z)，
-                    # evaluate_accuracy_metrics 内部会根据 use_head_g 参数选择头
+                # 使用枚举，获取 index (i) 以访问对应的 loader
+                for i, client in enumerate(clients):
+                    # 【修正】优先使用本地测试集，如果不存在（比如该客户端没数据）则跳过或用全局
+                    # client_test_loaders 是你在 main 函数前面预生成的
+                    local_loader = client_test_loaders[i]
 
-                    # FedRoD 的 Acc 依然看 Head-P，所以这里 use_head_g=False (默认值)
+                    if local_loader is None:
+                        continue # 或者使用 test_loader
+
+                    # 使用 本地测试集 评估 Head-P
                     c_id, c_tail, c_hier, c_hier_ratio = evaluate_accuracy_metrics(
-                        client.model, test_loader, taxonomy_matrix, tail_classes_set, device,
-                        use_head_g=False # <--- FedRoD 保持默认，读 Head-P
+                        client.model, local_loader, taxonomy_matrix, tail_classes_set, device,
+                        use_head_g=False # 读 Head-P
                     )
+
+                    # IN-C 泛化性测试通常还是用全局的，或者也切分（看你定义）
+                    # 这里暂时保持用全局 inc_loader，或者你也需要为 IN-C 做切分
                     c_inc, _, _, _ = evaluate_accuracy_metrics(
                         client.model, inc_loader, taxonomy_matrix, tail_classes_set, device,
-                        use_head_g=False # <--- FedRoD 保持默认
+                        use_head_g=False
                     )
 
                     p_acc_list.append(c_id)

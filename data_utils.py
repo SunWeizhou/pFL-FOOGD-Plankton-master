@@ -544,4 +544,4 @@ def build_taxonomy_matrix(num_classes=54, device='cpu'):
         M[noctiluca_idx, phaeocystis_idx] = 4.0
         M[phaeocystis_idx, noctiluca_idx] = 4.0
 
-    return M
+    return M/5.0  # 归一化到 [0,1] 范围
