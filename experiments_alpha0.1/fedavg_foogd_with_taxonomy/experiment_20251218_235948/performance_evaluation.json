@@ -1,0 +1,53 @@
+{
+  "experiment": "./experiments_alpha0.1/fedavg_foogd_with_taxonomy/experiment_20251218_235948",
+  "config": {
+    "data_root": "./Plankton_OOD_Dataset",
+    "n_clients": 5,
+    "alpha": 0.1,
+    "communication_rounds": 50,
+    "local_epochs": 1,
+    "batch_size": 64,
+    "client_fraction": 1.0,
+    "model_type": "densenet121",
+    "use_foogd": true,
+    "image_size": 299,
+    "algorithm": "fedavg",
+    "use_taxonomy": true,
+    "eval_frequency": 1,
+    "save_frequency": 10,
+    "device": "cuda",
+    "output_dir": "./experiments_alpha0.1/fedavg_foogd_with_taxonomy",
+    "seed": 2025,
+    "resume": false,
+    "compute_aug_features": true,
+    "freeze_bn": true,
+    "base_lr": 0.001
+  },
+  "head_g": {
+    "accuracy": 0.9149370534195305,
+    "confidences_mean": 0.9391718506813049,
+    "confidences_std": 0.13184037804603577
+  },
+  "head_p": null,
+  "detailed_metrics": {
+    "tail_accuracy": 0.7597765363128491,
+    "hierarchical_error": 0.036883294100703005,
+    "hierarchical_ratio": 0.9926233411798594
+  },
+  "ood_detection": {
+    "near_ood": {
+      "auroc": 0.24064318809639448,
+      "id_scores_mean": 9.943408012390137,
+      "id_scores_std": 1.4882735013961792,
+      "ood_scores_mean": 11.219635963439941,
+      "ood_scores_std": 1.194137454032898
+    },
+    "far_ood": {
+      "auroc": 0.1444565520085474,
+      "id_scores_mean": 9.943408012390137,
+      "id_scores_std": 1.4882735013961792,
+      "ood_scores_mean": 12.118080139160156,
+      "ood_scores_std": 1.4428160190582275
+    }
+  }
+}

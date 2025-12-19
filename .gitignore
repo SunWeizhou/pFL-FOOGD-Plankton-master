@@ -77,6 +77,9 @@ Thumbs.db
 # 日志文件
 *.log
 logs/
+# 但允许experiments_alpha0.1中的训练日志
+!experiments_alpha0.1/*.log
+!experiments_alpha0.1/**/*.log
 
 # 临时文件
 *.tmp

@@ -1,0 +1,1695 @@
+Random Seed set to: 2025
+联邦学习训练配置:
+  data_root: ./Plankton_OOD_Dataset
+  n_clients: 5
+  alpha: 0.1
+  communication_rounds: 50
+  local_epochs: 1
+  batch_size: 64
+  client_fraction: 1.0
+  model_type: densenet121
+  use_foogd: True
+  image_size: 299
+  algorithm: fedavg
+  use_taxonomy: True
+  eval_frequency: 1
+  save_frequency: 10
+  device: cuda
+  output_dir: ./experiments_alpha0.1/fedavg_foogd_with_taxonomy
+  seed: 2025
+  resume: False
+  compute_aug_features: True
+  freeze_bn: True
+  base_lr: 0.001
+开始联邦学习训练...
+使用设备: cuda
+实验目录: ./experiments_alpha0.1/fedavg_foogd_with_taxonomy/experiment_20251218_235948
+
+创建数据加载器...
+[train] 发现缓存文件: ./Plankton_OOD_Dataset/cache_train.pkl
+[train] 缓存校验通过，已加载 26034 张图片。
+[train] 已加载 26034 张图片
+客户端 0: 11018 样本
+客户端 1: 3892 样本
+客户端 2: 3109 样本
+客户端 3: 3268 样本
+客户端 4: 4747 样本
+[test] 发现缓存文件: ./Plankton_OOD_Dataset/cache_test.pkl
+[test] 缓存校验通过，已加载 2939 张图片。
+[test] 已加载 2939 张图片
+[near_ood] 发现缓存文件: ./Plankton_OOD_Dataset/cache_near_ood.pkl
+[near_ood] 缓存校验通过，已加载 1516 张图片。
+[near_ood] 已加载 1516 张图片
+[far_ood] 发现缓存文件: ./Plankton_OOD_Dataset/cache_far_ood.pkl
+[far_ood] 缓存校验通过，已加载 17031 张图片。
+[far_ood] 已加载 17031 张图片
+[test] 发现缓存文件: ./Plankton_OOD_Dataset/cache_test.pkl
+[test] 缓存校验通过，已加载 2939 张图片。
+[test] 已加载 2939 张图片
+联邦学习数据加载器创建完成:
+  - 客户端数量: 5
+  - 测试集: 2939 样本
+  - Near-OOD: 1516 样本
+  - Far-OOD: 17031 样本
+  - IN-C (OOD泛化测试): 2939 样本
+预计算测试集类别索引映射...
+  预计算完成: 54 个类别, 2939 个样本
+
+构建分类学矩阵和识别尾部类别...
+  分类学矩阵构建完成: torch.Size([54, 54])
+正在计算全局类别分布以定义尾部类别...
+  - 全局样本最少的类: ID 23 (样本数: 47)
+  - 全局样本最多的类: ID 11 (样本数: 3711)
+  - 定义了 27 个尾部类别 (Tail Classes)
+  全局尾部类别识别完成: 27 个尾部类别
+
+创建全局模型...
+
+创建客户端...
+Client 0: Taxonomy-Aware Loss 已启用 ✅ (Alg: fedavg)
+Client 1: Taxonomy-Aware Loss 已启用 ✅ (Alg: fedavg)
+Client 2: Taxonomy-Aware Loss 已启用 ✅ (Alg: fedavg)
+Client 3: Taxonomy-Aware Loss 已启用 ✅ (Alg: fedavg)
+Client 4: Taxonomy-Aware Loss 已启用 ✅ (Alg: fedavg)
+正在预生成客户端本地测试集 (加速评估)...
+  预生成完成: 5 个客户端有本地测试集
+
+开始联邦学习训练，从第 1 轮 到 50 轮...
+
+=== 通信轮次 1/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 1.8116 | Cls: 1.8112, KSD: 6.471679, SM: 0.231715
+  客户端 0: 本地损失 = 1.8116
+Client 1 - Epochs 1 - Avg Loss: 2.9975 | Cls: 2.9970, KSD: 7.210670, SM: 0.248454
+  客户端 1: 本地损失 = 2.9975
+Client 2 - Epochs 1 - Avg Loss: 2.9711 | Cls: 2.9708, KSD: 4.972384, SM: 0.211777
+  客户端 2: 本地损失 = 2.9711
+Client 3 - Epochs 1 - Avg Loss: 3.2481 | Cls: 3.2478, KSD: 4.166140, SM: 0.247347
+  客户端 3: 本地损失 = 3.2481
+Client 4 - Epochs 1 - Avg Loss: 2.5885 | Cls: 2.5879, KSD: 9.818032, SM: 0.244577
+  客户端 4: 本地损失 = 2.5885
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.1820
+    -> IN-C Acc: 0.1882
+    -> Near AUROC: 0.5405
+    -> Far AUROC: 0.5098
+  [Result] ID Acc: 0.1820
+  [Result] Tail Acc: 0.0000
+  [Result] Hier Error: 0.8051 (Lower is better)
+  [Result] Hier Score: 0.8390 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.1882
+  [Result] Near AUROC: 0.5405
+  [Result] Far AUROC: 0.5098
+  ★ 新最优模型 (Acc: 0.1820) 已保存
+
+=== 通信轮次 2/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.9497 | Cls: 0.9495, KSD: 2.438519, SM: 0.252173
+  客户端 0: 本地损失 = 0.9497
+Client 1 - Epochs 1 - Avg Loss: 1.9873 | Cls: 1.9871, KSD: 2.159976, SM: 0.245885
+  客户端 1: 本地损失 = 1.9873
+Client 2 - Epochs 1 - Avg Loss: 2.4018 | Cls: 2.4015, KSD: 2.685130, SM: 0.222261
+  客户端 2: 本地损失 = 2.4018
+Client 3 - Epochs 1 - Avg Loss: 2.4235 | Cls: 2.4233, KSD: 2.138589, SM: 0.247426
+  客户端 3: 本地损失 = 2.4235
+Client 4 - Epochs 1 - Avg Loss: 1.6776 | Cls: 1.6773, KSD: 2.627414, SM: 0.244548
+  客户端 4: 本地损失 = 1.6776
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.3906
+    -> IN-C Acc: 0.3828
+    -> Near AUROC: 0.6007
+    -> Far AUROC: 0.6551
+  [Result] ID Acc: 0.3906
+  [Result] Tail Acc: 0.0112
+  [Result] Hier Error: 0.3981 (Lower is better)
+  [Result] Hier Score: 0.9204 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.3828
+  [Result] Near AUROC: 0.6007
+  [Result] Far AUROC: 0.6551
+  ★ 新最优模型 (Acc: 0.3906) 已保存
+
+=== 通信轮次 3/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.6349 | Cls: 0.6346, KSD: 1.648097, SM: 0.257877
+  客户端 0: 本地损失 = 0.6349
+Client 1 - Epochs 1 - Avg Loss: 1.5059 | Cls: 1.5056, KSD: 1.754768, SM: 0.246024
+  客户端 1: 本地损失 = 1.5059
+Client 2 - Epochs 1 - Avg Loss: 1.8809 | Cls: 1.8806, KSD: 1.838443, SM: 0.243550
+  客户端 2: 本地损失 = 1.8809
+Client 3 - Epochs 1 - Avg Loss: 1.7840 | Cls: 1.7837, KSD: 1.676990, SM: 0.250587
+  客户端 3: 本地损失 = 1.7840
+Client 4 - Epochs 1 - Avg Loss: 1.1979 | Cls: 1.1976, KSD: 1.796332, SM: 0.247824
+  客户端 4: 本地损失 = 1.1979
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.4777
+    -> IN-C Acc: 0.4849
+    -> Near AUROC: 0.6424
+    -> Far AUROC: 0.7376
+  [Result] ID Acc: 0.4777
+  [Result] Tail Acc: 0.0978
+  [Result] Hier Error: 0.2978 (Lower is better)
+  [Result] Hier Score: 0.9404 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.4849
+  [Result] Near AUROC: 0.6424
+  [Result] Far AUROC: 0.7376
+  ★ 新最优模型 (Acc: 0.4777) 已保存
+
+=== 通信轮次 4/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.4501 | Cls: 0.4497, KSD: 1.426850, SM: 0.259892
+  客户端 0: 本地损失 = 0.4501
+Client 1 - Epochs 1 - Avg Loss: 1.0812 | Cls: 1.0808, KSD: 1.543674, SM: 0.246728
+  客户端 1: 本地损失 = 1.0812
+Client 2 - Epochs 1 - Avg Loss: 1.4552 | Cls: 1.4547, KSD: 1.630431, SM: 0.250739
+  客户端 2: 本地损失 = 1.4552
+Client 3 - Epochs 1 - Avg Loss: 1.5769 | Cls: 1.5764, KSD: 1.626941, SM: 0.249074
+  客户端 3: 本地损失 = 1.5769
+Client 4 - Epochs 1 - Avg Loss: 0.9588 | Cls: 0.9583, KSD: 1.535373, SM: 0.246497
+  客户端 4: 本地损失 = 0.9588
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.5478
+    -> IN-C Acc: 0.5468
+    -> Near AUROC: 0.6374
+    -> Far AUROC: 0.7382
+  [Result] ID Acc: 0.5478
+  [Result] Tail Acc: 0.1676
+  [Result] Hier Error: 0.2838 (Lower is better)
+  [Result] Hier Score: 0.9432 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.5468
+  [Result] Near AUROC: 0.6374
+  [Result] Far AUROC: 0.7382
+  ★ 新最优模型 (Acc: 0.5478) 已保存
+
+=== 通信轮次 5/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.3740 | Cls: 0.3733, KSD: 1.302352, SM: 0.260971
+  客户端 0: 本地损失 = 0.3740
+Client 1 - Epochs 1 - Avg Loss: 0.8893 | Cls: 0.8887, KSD: 1.397784, SM: 0.246311
+  客户端 1: 本地损失 = 0.8893
+Client 2 - Epochs 1 - Avg Loss: 1.2048 | Cls: 1.2041, KSD: 1.503890, SM: 0.251828
+  客户端 2: 本地损失 = 1.2048
+Client 3 - Epochs 1 - Avg Loss: 1.2151 | Cls: 1.2144, KSD: 1.531654, SM: 0.250235
+  客户端 3: 本地损失 = 1.2151
+Client 4 - Epochs 1 - Avg Loss: 0.8068 | Cls: 0.8061, KSD: 1.468387, SM: 0.244445
+  客户端 4: 本地损失 = 0.8068
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.5914
+    -> IN-C Acc: 0.5880
+    -> Near AUROC: 0.6437
+    -> Far AUROC: 0.7654
+  [Result] ID Acc: 0.5914
+  [Result] Tail Acc: 0.2207
+  [Result] Hier Error: 0.2480 (Lower is better)
+  [Result] Hier Score: 0.9504 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.5880
+  [Result] Near AUROC: 0.6437
+  [Result] Far AUROC: 0.7654
+  ★ 新最优模型 (Acc: 0.5914) 已保存
+
+=== 通信轮次 6/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+  [Auto-Weight] Round 5: Alpha=0.0759 | KSD_w=0.000759
+Client 0 - Epochs 1 - Avg Loss: 0.3246 | Cls: 0.3236, KSD: 1.241520, SM: 0.261643
+  客户端 0: 本地损失 = 0.3246
+  [Auto-Weight] Round 5: Alpha=0.0759 | KSD_w=0.000759
+Client 1 - Epochs 1 - Avg Loss: 0.7011 | Cls: 0.7000, KSD: 1.423079, SM: 0.245935
+  客户端 1: 本地损失 = 0.7011
+  [Auto-Weight] Round 5: Alpha=0.0759 | KSD_w=0.000759
+Client 2 - Epochs 1 - Avg Loss: 0.9674 | Cls: 0.9663, KSD: 1.487935, SM: 0.251497
+  客户端 2: 本地损失 = 0.9674
+  [Auto-Weight] Round 5: Alpha=0.0759 | KSD_w=0.000759
+Client 3 - Epochs 1 - Avg Loss: 1.0274 | Cls: 1.0263, KSD: 1.501866, SM: 0.249933
+  客户端 3: 本地损失 = 1.0274
+  [Auto-Weight] Round 5: Alpha=0.0759 | KSD_w=0.000759
+Client 4 - Epochs 1 - Avg Loss: 0.6666 | Cls: 0.6654, KSD: 1.468125, SM: 0.246093
+  客户端 4: 本地损失 = 0.6666
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.6380
+    -> IN-C Acc: 0.6390
+    -> Near AUROC: 0.6033
+    -> Far AUROC: 0.7771
+  [Result] ID Acc: 0.6380
+  [Result] Tail Acc: 0.2514
+  [Result] Hier Error: 0.1976 (Lower is better)
+  [Result] Hier Score: 0.9605 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.6390
+  [Result] Near AUROC: 0.6033
+  [Result] Far AUROC: 0.7771
+  ★ 新最优模型 (Acc: 0.6380) 已保存
+
+=== 通信轮次 7/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.2840 | Cls: 0.2826, KSD: 1.202948, SM: 0.261115
+  客户端 0: 本地损失 = 0.2840
+Client 1 - Epochs 1 - Avg Loss: 0.5679 | Cls: 0.5662, KSD: 1.380364, SM: 0.246866
+  客户端 1: 本地损失 = 0.5679
+Client 2 - Epochs 1 - Avg Loss: 0.8731 | Cls: 0.8714, KSD: 1.395401, SM: 0.251185
+  客户端 2: 本地损失 = 0.8731
+Client 3 - Epochs 1 - Avg Loss: 0.9194 | Cls: 0.9177, KSD: 1.441242, SM: 0.249586
+  客户端 3: 本地损失 = 0.9194
+Client 4 - Epochs 1 - Avg Loss: 0.5656 | Cls: 0.5639, KSD: 1.402878, SM: 0.246783
+  客户端 4: 本地损失 = 0.5656
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.6577
+    -> IN-C Acc: 0.6424
+    -> Near AUROC: 0.6219
+    -> Far AUROC: 0.7867
+  [Result] ID Acc: 0.6577
+  [Result] Tail Acc: 0.2877
+  [Result] Hier Error: 0.1944 (Lower is better)
+  [Result] Hier Score: 0.9611 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.6424
+  [Result] Near AUROC: 0.6219
+  [Result] Far AUROC: 0.7867
+  ★ 新最优模型 (Acc: 0.6577) 已保存
+
+=== 通信轮次 8/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.2750 | Cls: 0.2730, KSD: 1.110627, SM: 0.261876
+  客户端 0: 本地损失 = 0.2750
+Client 1 - Epochs 1 - Avg Loss: 0.5377 | Cls: 0.5353, KSD: 1.317840, SM: 0.246206
+  客户端 1: 本地损失 = 0.5377
+Client 2 - Epochs 1 - Avg Loss: 0.6935 | Cls: 0.6910, KSD: 1.349482, SM: 0.250402
+  客户端 2: 本地损失 = 0.6935
+Client 3 - Epochs 1 - Avg Loss: 0.7892 | Cls: 0.7867, KSD: 1.391926, SM: 0.249275
+  客户端 3: 本地损失 = 0.7892
+Client 4 - Epochs 1 - Avg Loss: 0.5466 | Cls: 0.5442, KSD: 1.316462, SM: 0.246909
+  客户端 4: 本地损失 = 0.5466
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.6958
+    -> IN-C Acc: 0.6948
+    -> Near AUROC: 0.6360
+    -> Far AUROC: 0.8106
+  [Result] ID Acc: 0.6958
+  [Result] Tail Acc: 0.3240
+  [Result] Hier Error: 0.1720 (Lower is better)
+  [Result] Hier Score: 0.9656 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.6948
+  [Result] Near AUROC: 0.6360
+  [Result] Far AUROC: 0.8106
+  ★ 新最优模型 (Acc: 0.6958) 已保存
+
+=== 通信轮次 9/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.2505 | Cls: 0.2476, KSD: 1.100732, SM: 0.262126
+  客户端 0: 本地损失 = 0.2505
+Client 1 - Epochs 1 - Avg Loss: 0.4858 | Cls: 0.4824, KSD: 1.251035, SM: 0.246704
+  客户端 1: 本地损失 = 0.4858
+Client 2 - Epochs 1 - Avg Loss: 0.6615 | Cls: 0.6579, KSD: 1.334920, SM: 0.251379
+  客户端 2: 本地损失 = 0.6615
+Client 3 - Epochs 1 - Avg Loss: 0.7117 | Cls: 0.7081, KSD: 1.341551, SM: 0.249370
+  客户端 3: 本地损失 = 0.7117
+Client 4 - Epochs 1 - Avg Loss: 0.4591 | Cls: 0.4556, KSD: 1.300852, SM: 0.249115
+  客户端 4: 本地损失 = 0.4591
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.7064
+    -> IN-C Acc: 0.6982
+    -> Near AUROC: 0.6745
+    -> Far AUROC: 0.7892
+  [Result] ID Acc: 0.7064
+  [Result] Tail Acc: 0.3743
+  [Result] Hier Error: 0.1517 (Lower is better)
+  [Result] Hier Score: 0.9697 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.6982
+  [Result] Near AUROC: 0.6745
+  [Result] Far AUROC: 0.7892
+  ★ 新最优模型 (Acc: 0.7064) 已保存
+
+=== 通信轮次 10/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.2306 | Cls: 0.2266, KSD: 1.042014, SM: 0.262783
+  客户端 0: 本地损失 = 0.2306
+Client 1 - Epochs 1 - Avg Loss: 0.4288 | Cls: 0.4242, KSD: 1.226120, SM: 0.246431
+  客户端 1: 本地损失 = 0.4288
+Client 2 - Epochs 1 - Avg Loss: 0.5673 | Cls: 0.5622, KSD: 1.342066, SM: 0.250578
+  客户端 2: 本地损失 = 0.5673
+Client 3 - Epochs 1 - Avg Loss: 0.7162 | Cls: 0.7115, KSD: 1.251947, SM: 0.249938
+  客户端 3: 本地损失 = 0.7162
+Client 4 - Epochs 1 - Avg Loss: 0.4084 | Cls: 0.4035, KSD: 1.282038, SM: 0.249224
+  客户端 4: 本地损失 = 0.4084
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.7353
+    -> IN-C Acc: 0.7292
+    -> Near AUROC: 0.6882
+    -> Far AUROC: 0.8228
+  [Result] ID Acc: 0.7353
+  [Result] Tail Acc: 0.4106
+  [Result] Hier Error: 0.1340 (Lower is better)
+  [Result] Hier Score: 0.9732 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.7292
+  [Result] Near AUROC: 0.6882
+  [Result] Far AUROC: 0.8228
+  ★ 新最优模型 (Acc: 0.7353) 已保存
+检查点已保存: round_10.pth
+
+=== 通信轮次 11/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+  [Auto-Weight] Round 10: Alpha=0.5000 | KSD_w=0.005000
+Client 0 - Epochs 1 - Avg Loss: 0.2337 | Cls: 0.2286, KSD: 1.031488, SM: 0.263683
+  客户端 0: 本地损失 = 0.2337
+  [Auto-Weight] Round 10: Alpha=0.5000 | KSD_w=0.005000
+Client 1 - Epochs 1 - Avg Loss: 0.3957 | Cls: 0.3899, KSD: 1.168921, SM: 0.246670
+  客户端 1: 本地损失 = 0.3957
+  [Auto-Weight] Round 10: Alpha=0.5000 | KSD_w=0.005000
+Client 2 - Epochs 1 - Avg Loss: 0.5194 | Cls: 0.5129, KSD: 1.292724, SM: 0.250029
+  客户端 2: 本地损失 = 0.5194
+  [Auto-Weight] Round 10: Alpha=0.5000 | KSD_w=0.005000
+Client 3 - Epochs 1 - Avg Loss: 0.6309 | Cls: 0.6248, KSD: 1.229614, SM: 0.249698
+  客户端 3: 本地损失 = 0.6309
+  [Auto-Weight] Round 10: Alpha=0.5000 | KSD_w=0.005000
+Client 4 - Epochs 1 - Avg Loss: 0.3738 | Cls: 0.3674, KSD: 1.272597, SM: 0.248671
+  客户端 4: 本地损失 = 0.3738
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.7482
+    -> IN-C Acc: 0.7373
+    -> Near AUROC: 0.6680
+    -> Far AUROC: 0.7953
+  [Result] ID Acc: 0.7482
+  [Result] Tail Acc: 0.4134
+  [Result] Hier Error: 0.1365 (Lower is better)
+  [Result] Hier Score: 0.9727 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.7373
+  [Result] Near AUROC: 0.6680
+  [Result] Far AUROC: 0.7953
+  ★ 新最优模型 (Acc: 0.7482) 已保存
+
+=== 通信轮次 12/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.2063 | Cls: 0.2002, KSD: 0.986342, SM: 0.262717
+  客户端 0: 本地损失 = 0.2063
+Client 1 - Epochs 1 - Avg Loss: 0.3608 | Cls: 0.3537, KSD: 1.137669, SM: 0.246445
+  客户端 1: 本地损失 = 0.3608
+Client 2 - Epochs 1 - Avg Loss: 0.5103 | Cls: 0.5027, KSD: 1.227749, SM: 0.251173
+  客户端 2: 本地损失 = 0.5103
+Client 3 - Epochs 1 - Avg Loss: 0.5875 | Cls: 0.5800, KSD: 1.215543, SM: 0.249206
+  客户端 3: 本地损失 = 0.5875
+Client 4 - Epochs 1 - Avg Loss: 0.3573 | Cls: 0.3496, KSD: 1.229017, SM: 0.248698
+  客户端 4: 本地损失 = 0.3573
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.7618
+    -> IN-C Acc: 0.7567
+    -> Near AUROC: 0.6724
+    -> Far AUROC: 0.8216
+  [Result] ID Acc: 0.7618
+  [Result] Tail Acc: 0.4553
+  [Result] Hier Error: 0.1209 (Lower is better)
+  [Result] Hier Score: 0.9758 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.7567
+  [Result] Near AUROC: 0.6724
+  [Result] Far AUROC: 0.8216
+  ★ 新最优模型 (Acc: 0.7618) 已保存
+
+=== 通信轮次 13/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1977 | Cls: 0.1906, KSD: 0.970622, SM: 0.262306
+  客户端 0: 本地损失 = 0.1977
+Client 1 - Epochs 1 - Avg Loss: 0.3554 | Cls: 0.3473, KSD: 1.108963, SM: 0.247905
+  客户端 1: 本地损失 = 0.3554
+Client 2 - Epochs 1 - Avg Loss: 0.4657 | Cls: 0.4568, KSD: 1.222644, SM: 0.251052
+  客户端 2: 本地损失 = 0.4657
+Client 3 - Epochs 1 - Avg Loss: 0.5224 | Cls: 0.5138, KSD: 1.181227, SM: 0.250069
+  客户端 3: 本地损失 = 0.5224
+Client 4 - Epochs 1 - Avg Loss: 0.3516 | Cls: 0.3429, KSD: 1.185976, SM: 0.249231
+  客户端 4: 本地损失 = 0.3516
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.7788
+    -> IN-C Acc: 0.7768
+    -> Near AUROC: 0.6736
+    -> Far AUROC: 0.8343
+  [Result] ID Acc: 0.7788
+  [Result] Tail Acc: 0.4637
+  [Result] Hier Error: 0.1122 (Lower is better)
+  [Result] Hier Score: 0.9776 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.7768
+  [Result] Near AUROC: 0.6736
+  [Result] Far AUROC: 0.8343
+  ★ 新最优模型 (Acc: 0.7788) 已保存
+
+=== 通信轮次 14/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1949 | Cls: 0.1871, KSD: 0.958262, SM: 0.263233
+  客户端 0: 本地损失 = 0.1949
+Client 1 - Epochs 1 - Avg Loss: 0.3325 | Cls: 0.3233, KSD: 1.128114, SM: 0.246908
+  客户端 1: 本地损失 = 0.3325
+Client 2 - Epochs 1 - Avg Loss: 0.4301 | Cls: 0.4205, KSD: 1.181316, SM: 0.250701
+  客户端 2: 本地损失 = 0.4301
+Client 3 - Epochs 1 - Avg Loss: 0.4845 | Cls: 0.4747, KSD: 1.197443, SM: 0.250456
+  客户端 3: 本地损失 = 0.4845
+Client 4 - Epochs 1 - Avg Loss: 0.3194 | Cls: 0.3099, KSD: 1.164872, SM: 0.248965
+  客户端 4: 本地损失 = 0.3194
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.7986
+    -> IN-C Acc: 0.8023
+    -> Near AUROC: 0.6860
+    -> Far AUROC: 0.8088
+  [Result] ID Acc: 0.7986
+  [Result] Tail Acc: 0.4749
+  [Result] Hier Error: 0.0978 (Lower is better)
+  [Result] Hier Score: 0.9804 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8023
+  [Result] Near AUROC: 0.6860
+  [Result] Far AUROC: 0.8088
+  ★ 新最优模型 (Acc: 0.7986) 已保存
+
+=== 通信轮次 15/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1849 | Cls: 0.1768, KSD: 0.920682, SM: 0.262699
+  客户端 0: 本地损失 = 0.1849
+Client 1 - Epochs 1 - Avg Loss: 0.3059 | Cls: 0.2964, KSD: 1.089612, SM: 0.247708
+  客户端 1: 本地损失 = 0.3059
+Client 2 - Epochs 1 - Avg Loss: 0.3981 | Cls: 0.3878, KSD: 1.167154, SM: 0.250403
+  客户端 2: 本地损失 = 0.3981
+Client 3 - Epochs 1 - Avg Loss: 0.4749 | Cls: 0.4648, KSD: 1.148175, SM: 0.249787
+  客户端 3: 本地损失 = 0.4749
+Client 4 - Epochs 1 - Avg Loss: 0.2975 | Cls: 0.2873, KSD: 1.154853, SM: 0.249397
+  客户端 4: 本地损失 = 0.2975
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8016
+    -> IN-C Acc: 0.7996
+    -> Near AUROC: 0.7061
+    -> Far AUROC: 0.7992
+  [Result] ID Acc: 0.8016
+  [Result] Tail Acc: 0.4888
+  [Result] Hier Error: 0.0923 (Lower is better)
+  [Result] Hier Score: 0.9815 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.7996
+  [Result] Near AUROC: 0.7061
+  [Result] Far AUROC: 0.7992
+  ★ 新最优模型 (Acc: 0.8016) 已保存
+
+=== 通信轮次 16/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+  [Auto-Weight] Round 15: Alpha=0.9241 | KSD_w=0.009241
+Client 0 - Epochs 1 - Avg Loss: 0.1796 | Cls: 0.1711, KSD: 0.912389, SM: 0.262887
+  客户端 0: 本地损失 = 0.1796
+  [Auto-Weight] Round 15: Alpha=0.9241 | KSD_w=0.009241
+Client 1 - Epochs 1 - Avg Loss: 0.2794 | Cls: 0.2693, KSD: 1.087447, SM: 0.247778
+  客户端 1: 本地损失 = 0.2794
+  [Auto-Weight] Round 15: Alpha=0.9241 | KSD_w=0.009241
+Client 2 - Epochs 1 - Avg Loss: 0.3793 | Cls: 0.3687, KSD: 1.150948, SM: 0.250107
+  客户端 2: 本地损失 = 0.3793
+  [Auto-Weight] Round 15: Alpha=0.9241 | KSD_w=0.009241
+Client 3 - Epochs 1 - Avg Loss: 0.4248 | Cls: 0.4141, KSD: 1.155756, SM: 0.250406
+  客户端 3: 本地损失 = 0.4248
+  [Auto-Weight] Round 15: Alpha=0.9241 | KSD_w=0.009241
+Client 4 - Epochs 1 - Avg Loss: 0.2907 | Cls: 0.2802, KSD: 1.134515, SM: 0.250019
+  客户端 4: 本地损失 = 0.2907
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8010
+    -> IN-C Acc: 0.7870
+    -> Near AUROC: 0.7106
+    -> Far AUROC: 0.7954
+  [Result] ID Acc: 0.8010
+  [Result] Tail Acc: 0.5028
+  [Result] Hier Error: 0.0952 (Lower is better)
+  [Result] Hier Score: 0.9810 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.7870
+  [Result] Near AUROC: 0.7106
+  [Result] Far AUROC: 0.7954
+
+=== 通信轮次 17/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1780 | Cls: 0.1694, KSD: 0.906077, SM: 0.262925
+  客户端 0: 本地损失 = 0.1780
+Client 1 - Epochs 1 - Avg Loss: 0.2876 | Cls: 0.2775, KSD: 1.061562, SM: 0.248390
+  客户端 1: 本地损失 = 0.2876
+Client 2 - Epochs 1 - Avg Loss: 0.3656 | Cls: 0.3551, KSD: 1.098660, SM: 0.250722
+  客户端 2: 本地损失 = 0.3656
+Client 3 - Epochs 1 - Avg Loss: 0.4309 | Cls: 0.4202, KSD: 1.115581, SM: 0.249509
+  客户端 3: 本地损失 = 0.4309
+Client 4 - Epochs 1 - Avg Loss: 0.2859 | Cls: 0.2751, KSD: 1.139116, SM: 0.249807
+  客户端 4: 本地损失 = 0.2859
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8217
+    -> IN-C Acc: 0.8183
+    -> Near AUROC: 0.7064
+    -> Far AUROC: 0.8084
+  [Result] ID Acc: 0.8217
+  [Result] Tail Acc: 0.5615
+  [Result] Hier Error: 0.0857 (Lower is better)
+  [Result] Hier Score: 0.9829 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8183
+  [Result] Near AUROC: 0.7064
+  [Result] Far AUROC: 0.8084
+  ★ 新最优模型 (Acc: 0.8217) 已保存
+
+=== 通信轮次 18/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1678 | Cls: 0.1591, KSD: 0.898243, SM: 0.262775
+  客户端 0: 本地损失 = 0.1678
+Client 1 - Epochs 1 - Avg Loss: 0.2724 | Cls: 0.2624, KSD: 1.030529, SM: 0.248438
+  客户端 1: 本地损失 = 0.2724
+Client 2 - Epochs 1 - Avg Loss: 0.3311 | Cls: 0.3202, KSD: 1.122633, SM: 0.251533
+  客户端 2: 本地损失 = 0.3311
+Client 3 - Epochs 1 - Avg Loss: 0.4003 | Cls: 0.3898, KSD: 1.085385, SM: 0.250214
+  客户端 3: 本地损失 = 0.4003
+Client 4 - Epochs 1 - Avg Loss: 0.2699 | Cls: 0.2591, KSD: 1.113792, SM: 0.248776
+  客户端 4: 本地损失 = 0.2699
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8299
+    -> IN-C Acc: 0.8377
+    -> Near AUROC: 0.6983
+    -> Far AUROC: 0.8132
+  [Result] ID Acc: 0.8299
+  [Result] Tail Acc: 0.5447
+  [Result] Hier Error: 0.0801 (Lower is better)
+  [Result] Hier Score: 0.9840 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8377
+  [Result] Near AUROC: 0.6983
+  [Result] Far AUROC: 0.8132
+  ★ 新最优模型 (Acc: 0.8299) 已保存
+
+=== 通信轮次 19/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1626 | Cls: 0.1540, KSD: 0.879510, SM: 0.262763
+  客户端 0: 本地损失 = 0.1626
+Client 1 - Epochs 1 - Avg Loss: 0.2500 | Cls: 0.2399, KSD: 1.025638, SM: 0.247973
+  客户端 1: 本地损失 = 0.2500
+Client 2 - Epochs 1 - Avg Loss: 0.3316 | Cls: 0.3208, KSD: 1.096380, SM: 0.251833
+  客户端 2: 本地损失 = 0.3316
+Client 3 - Epochs 1 - Avg Loss: 0.3719 | Cls: 0.3610, KSD: 1.110775, SM: 0.249779
+  客户端 3: 本地损失 = 0.3719
+Client 4 - Epochs 1 - Avg Loss: 0.2601 | Cls: 0.2492, KSD: 1.109328, SM: 0.250268
+  客户端 4: 本地损失 = 0.2601
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8428
+    -> IN-C Acc: 0.8346
+    -> Near AUROC: 0.7223
+    -> Far AUROC: 0.8277
+  [Result] ID Acc: 0.8428
+  [Result] Tail Acc: 0.5670
+  [Result] Hier Error: 0.0738 (Lower is better)
+  [Result] Hier Score: 0.9852 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8346
+  [Result] Near AUROC: 0.7223
+  [Result] Far AUROC: 0.8277
+  ★ 新最优模型 (Acc: 0.8428) 已保存
+
+=== 通信轮次 20/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1556 | Cls: 0.1468, KSD: 0.896245, SM: 0.262881
+  客户端 0: 本地损失 = 0.1556
+Client 1 - Epochs 1 - Avg Loss: 0.2277 | Cls: 0.2175, KSD: 1.037005, SM: 0.248613
+  客户端 1: 本地损失 = 0.2277
+Client 2 - Epochs 1 - Avg Loss: 0.3144 | Cls: 0.3037, KSD: 1.083172, SM: 0.250795
+  客户端 2: 本地损失 = 0.3144
+Client 3 - Epochs 1 - Avg Loss: 0.3760 | Cls: 0.3654, KSD: 1.070228, SM: 0.250572
+  客户端 3: 本地损失 = 0.3760
+Client 4 - Epochs 1 - Avg Loss: 0.2689 | Cls: 0.2581, KSD: 1.088048, SM: 0.249504
+  客户端 4: 本地损失 = 0.2689
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8370
+    -> IN-C Acc: 0.8237
+    -> Near AUROC: 0.7513
+    -> Far AUROC: 0.8119
+  [Result] ID Acc: 0.8370
+  [Result] Tail Acc: 0.6034
+  [Result] Hier Error: 0.0755 (Lower is better)
+  [Result] Hier Score: 0.9849 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8237
+  [Result] Near AUROC: 0.7513
+  [Result] Far AUROC: 0.8119
+检查点已保存: round_20.pth
+
+=== 通信轮次 21/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+  [Auto-Weight] Round 20: Alpha=0.9933 | KSD_w=0.009933
+Client 0 - Epochs 1 - Avg Loss: 0.1478 | Cls: 0.1392, KSD: 0.863037, SM: 0.262669
+  客户端 0: 本地损失 = 0.1478
+  [Auto-Weight] Round 20: Alpha=0.9933 | KSD_w=0.009933
+Client 1 - Epochs 1 - Avg Loss: 0.2331 | Cls: 0.2228, KSD: 1.028649, SM: 0.248679
+  客户端 1: 本地损失 = 0.2331
+  [Auto-Weight] Round 20: Alpha=0.9933 | KSD_w=0.009933
+Client 2 - Epochs 1 - Avg Loss: 0.3145 | Cls: 0.3039, KSD: 1.063503, SM: 0.251688
+  客户端 2: 本地损失 = 0.3145
+  [Auto-Weight] Round 20: Alpha=0.9933 | KSD_w=0.009933
+Client 3 - Epochs 1 - Avg Loss: 0.3585 | Cls: 0.3481, KSD: 1.051725, SM: 0.250522
+  客户端 3: 本地损失 = 0.3585
+  [Auto-Weight] Round 20: Alpha=0.9933 | KSD_w=0.009933
+Client 4 - Epochs 1 - Avg Loss: 0.2490 | Cls: 0.2386, KSD: 1.046346, SM: 0.251150
+  客户端 4: 本地损失 = 0.2490
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8496
+    -> IN-C Acc: 0.8411
+    -> Near AUROC: 0.7175
+    -> Far AUROC: 0.8388
+  [Result] ID Acc: 0.8496
+  [Result] Tail Acc: 0.6341
+  [Result] Hier Error: 0.0670 (Lower is better)
+  [Result] Hier Score: 0.9866 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8411
+  [Result] Near AUROC: 0.7175
+  [Result] Far AUROC: 0.8388
+  ★ 新最优模型 (Acc: 0.8496) 已保存
+
+=== 通信轮次 22/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1387 | Cls: 0.1301, KSD: 0.858738, SM: 0.262961
+  客户端 0: 本地损失 = 0.1387
+Client 1 - Epochs 1 - Avg Loss: 0.2090 | Cls: 0.1991, KSD: 0.991762, SM: 0.248588
+  客户端 1: 本地损失 = 0.2090
+Client 2 - Epochs 1 - Avg Loss: 0.3034 | Cls: 0.2930, KSD: 1.046508, SM: 0.251246
+  客户端 2: 本地损失 = 0.3034
+Client 3 - Epochs 1 - Avg Loss: 0.3435 | Cls: 0.3331, KSD: 1.043987, SM: 0.250297
+  客户端 3: 本地损失 = 0.3435
+Client 4 - Epochs 1 - Avg Loss: 0.2457 | Cls: 0.2353, KSD: 1.047694, SM: 0.250308
+  客户端 4: 本地损失 = 0.2457
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8499
+    -> IN-C Acc: 0.8394
+    -> Near AUROC: 0.7472
+    -> Far AUROC: 0.8111
+  [Result] ID Acc: 0.8499
+  [Result] Tail Acc: 0.6173
+  [Result] Hier Error: 0.0736 (Lower is better)
+  [Result] Hier Score: 0.9853 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8394
+  [Result] Near AUROC: 0.7472
+  [Result] Far AUROC: 0.8111
+  ★ 新最优模型 (Acc: 0.8499) 已保存
+
+=== 通信轮次 23/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1368 | Cls: 0.1282, KSD: 0.858086, SM: 0.263166
+  客户端 0: 本地损失 = 0.1368
+Client 1 - Epochs 1 - Avg Loss: 0.2228 | Cls: 0.2129, KSD: 0.994624, SM: 0.248198
+  客户端 1: 本地损失 = 0.2228
+Client 2 - Epochs 1 - Avg Loss: 0.2872 | Cls: 0.2769, KSD: 1.032163, SM: 0.251658
+  客户端 2: 本地损失 = 0.2872
+Client 3 - Epochs 1 - Avg Loss: 0.2853 | Cls: 0.2751, KSD: 1.021961, SM: 0.250349
+  客户端 3: 本地损失 = 0.2853
+Client 4 - Epochs 1 - Avg Loss: 0.2139 | Cls: 0.2031, KSD: 1.080700, SM: 0.251077
+  客户端 4: 本地损失 = 0.2139
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8710
+    -> IN-C Acc: 0.8663
+    -> Near AUROC: 0.7504
+    -> Far AUROC: 0.8211
+  [Result] ID Acc: 0.8710
+  [Result] Tail Acc: 0.6397
+  [Result] Hier Error: 0.0584 (Lower is better)
+  [Result] Hier Score: 0.9883 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8663
+  [Result] Near AUROC: 0.7504
+  [Result] Far AUROC: 0.8211
+  ★ 新最优模型 (Acc: 0.8710) 已保存
+
+=== 通信轮次 24/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1321 | Cls: 0.1236, KSD: 0.853598, SM: 0.263117
+  客户端 0: 本地损失 = 0.1321
+Client 1 - Epochs 1 - Avg Loss: 0.2012 | Cls: 0.1914, KSD: 0.981781, SM: 0.248367
+  客户端 1: 本地损失 = 0.2012
+Client 2 - Epochs 1 - Avg Loss: 0.2936 | Cls: 0.2835, KSD: 1.005737, SM: 0.252231
+  客户端 2: 本地损失 = 0.2936
+Client 3 - Epochs 1 - Avg Loss: 0.2785 | Cls: 0.2683, KSD: 1.027364, SM: 0.250189
+  客户端 3: 本地损失 = 0.2785
+Client 4 - Epochs 1 - Avg Loss: 0.2037 | Cls: 0.1934, KSD: 1.031490, SM: 0.250560
+  客户端 4: 本地损失 = 0.2037
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8510
+    -> IN-C Acc: 0.8411
+    -> Near AUROC: 0.7270
+    -> Far AUROC: 0.8036
+  [Result] ID Acc: 0.8510
+  [Result] Tail Acc: 0.6145
+  [Result] Hier Error: 0.0663 (Lower is better)
+  [Result] Hier Score: 0.9867 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8411
+  [Result] Near AUROC: 0.7270
+  [Result] Far AUROC: 0.8036
+
+=== 通信轮次 25/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1299 | Cls: 0.1214, KSD: 0.848795, SM: 0.263251
+  客户端 0: 本地损失 = 0.1299
+Client 1 - Epochs 1 - Avg Loss: 0.2139 | Cls: 0.2044, KSD: 0.949694, SM: 0.249393
+  客户端 1: 本地损失 = 0.2139
+Client 2 - Epochs 1 - Avg Loss: 0.2720 | Cls: 0.2618, KSD: 1.024689, SM: 0.251421
+  客户端 2: 本地损失 = 0.2720
+Client 3 - Epochs 1 - Avg Loss: 0.3185 | Cls: 0.3085, KSD: 0.999479, SM: 0.250266
+  客户端 3: 本地损失 = 0.3185
+Client 4 - Epochs 1 - Avg Loss: 0.2202 | Cls: 0.2100, KSD: 1.017050, SM: 0.251515
+  客户端 4: 本地损失 = 0.2202
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8680
+    -> IN-C Acc: 0.8595
+    -> Near AUROC: 0.7448
+    -> Far AUROC: 0.8275
+  [Result] ID Acc: 0.8680
+  [Result] Tail Acc: 0.6313
+  [Result] Hier Error: 0.0609 (Lower is better)
+  [Result] Hier Score: 0.9878 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8595
+  [Result] Near AUROC: 0.7448
+  [Result] Far AUROC: 0.8275
+
+=== 通信轮次 26/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+  [Auto-Weight] Round 25: Alpha=0.9994 | KSD_w=0.009994
+Client 0 - Epochs 1 - Avg Loss: 0.1322 | Cls: 0.1239, KSD: 0.832707, SM: 0.263274
+  客户端 0: 本地损失 = 0.1322
+  [Auto-Weight] Round 25: Alpha=0.9994 | KSD_w=0.009994
+Client 1 - Epochs 1 - Avg Loss: 0.1844 | Cls: 0.1750, KSD: 0.943618, SM: 0.249251
+  客户端 1: 本地损失 = 0.1844
+  [Auto-Weight] Round 25: Alpha=0.9994 | KSD_w=0.009994
+Client 2 - Epochs 1 - Avg Loss: 0.2509 | Cls: 0.2405, KSD: 1.038838, SM: 0.251490
+  客户端 2: 本地损失 = 0.2509
+  [Auto-Weight] Round 25: Alpha=0.9994 | KSD_w=0.009994
+Client 3 - Epochs 1 - Avg Loss: 0.2820 | Cls: 0.2721, KSD: 0.993733, SM: 0.250930
+  客户端 3: 本地损失 = 0.2820
+  [Auto-Weight] Round 25: Alpha=0.9994 | KSD_w=0.009994
+Client 4 - Epochs 1 - Avg Loss: 0.1982 | Cls: 0.1882, KSD: 0.997778, SM: 0.250871
+  客户端 4: 本地损失 = 0.1982
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8656
+    -> IN-C Acc: 0.8625
+    -> Near AUROC: 0.7389
+    -> Far AUROC: 0.8203
+  [Result] ID Acc: 0.8656
+  [Result] Tail Acc: 0.6369
+  [Result] Hier Error: 0.0636 (Lower is better)
+  [Result] Hier Score: 0.9873 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8625
+  [Result] Near AUROC: 0.7389
+  [Result] Far AUROC: 0.8203
+
+=== 通信轮次 27/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1231 | Cls: 0.1149, KSD: 0.819541, SM: 0.263160
+  客户端 0: 本地损失 = 0.1231
+Client 1 - Epochs 1 - Avg Loss: 0.1861 | Cls: 0.1768, KSD: 0.928389, SM: 0.249383
+  客户端 1: 本地损失 = 0.1861
+Client 2 - Epochs 1 - Avg Loss: 0.2412 | Cls: 0.2310, KSD: 1.019477, SM: 0.252030
+  客户端 2: 本地损失 = 0.2412
+Client 3 - Epochs 1 - Avg Loss: 0.2955 | Cls: 0.2857, KSD: 0.981575, SM: 0.250102
+  客户端 3: 本地损失 = 0.2955
+Client 4 - Epochs 1 - Avg Loss: 0.1977 | Cls: 0.1876, KSD: 1.018656, SM: 0.250862
+  客户端 4: 本地损失 = 0.1977
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8738
+    -> IN-C Acc: 0.8605
+    -> Near AUROC: 0.7539
+    -> Far AUROC: 0.8025
+  [Result] ID Acc: 0.8738
+  [Result] Tail Acc: 0.6788
+  [Result] Hier Error: 0.0564 (Lower is better)
+  [Result] Hier Score: 0.9887 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8605
+  [Result] Near AUROC: 0.7539
+  [Result] Far AUROC: 0.8025
+  ★ 新最优模型 (Acc: 0.8738) 已保存
+
+=== 通信轮次 28/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1120 | Cls: 0.1039, KSD: 0.812982, SM: 0.263474
+  客户端 0: 本地损失 = 0.1120
+Client 1 - Epochs 1 - Avg Loss: 0.1955 | Cls: 0.1862, KSD: 0.922590, SM: 0.249825
+  客户端 1: 本地损失 = 0.1955
+Client 2 - Epochs 1 - Avg Loss: 0.2376 | Cls: 0.2278, KSD: 0.977155, SM: 0.251355
+  客户端 2: 本地损失 = 0.2376
+Client 3 - Epochs 1 - Avg Loss: 0.2706 | Cls: 0.2610, KSD: 0.963960, SM: 0.250407
+  客户端 3: 本地损失 = 0.2706
+Client 4 - Epochs 1 - Avg Loss: 0.1947 | Cls: 0.1847, KSD: 0.997215, SM: 0.250599
+  客户端 4: 本地损失 = 0.1947
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8727
+    -> IN-C Acc: 0.8690
+    -> Near AUROC: 0.7557
+    -> Far AUROC: 0.8306
+  [Result] ID Acc: 0.8727
+  [Result] Tail Acc: 0.6816
+  [Result] Hier Error: 0.0583 (Lower is better)
+  [Result] Hier Score: 0.9883 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8690
+  [Result] Near AUROC: 0.7557
+  [Result] Far AUROC: 0.8306
+
+=== 通信轮次 29/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1159 | Cls: 0.1076, KSD: 0.820642, SM: 0.263172
+  客户端 0: 本地损失 = 0.1159
+Client 1 - Epochs 1 - Avg Loss: 0.1761 | Cls: 0.1669, KSD: 0.914675, SM: 0.249508
+  客户端 1: 本地损失 = 0.1761
+Client 2 - Epochs 1 - Avg Loss: 0.2380 | Cls: 0.2282, KSD: 0.985224, SM: 0.252134
+  客户端 2: 本地损失 = 0.2380
+Client 3 - Epochs 1 - Avg Loss: 0.2967 | Cls: 0.2869, KSD: 0.974654, SM: 0.249757
+  客户端 3: 本地损失 = 0.2967
+Client 4 - Epochs 1 - Avg Loss: 0.1971 | Cls: 0.1871, KSD: 1.005552, SM: 0.251059
+  客户端 4: 本地损失 = 0.1971
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8932
+    -> IN-C Acc: 0.8847
+    -> Near AUROC: 0.7728
+    -> Far AUROC: 0.8299
+  [Result] ID Acc: 0.8932
+  [Result] Tail Acc: 0.6760
+  [Result] Hier Error: 0.0485 (Lower is better)
+  [Result] Hier Score: 0.9903 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8847
+  [Result] Near AUROC: 0.7728
+  [Result] Far AUROC: 0.8299
+  ★ 新最优模型 (Acc: 0.8932) 已保存
+
+=== 通信轮次 30/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1016 | Cls: 0.0935, KSD: 0.811283, SM: 0.263104
+  客户端 0: 本地损失 = 0.1016
+Client 1 - Epochs 1 - Avg Loss: 0.1711 | Cls: 0.1617, KSD: 0.949048, SM: 0.249825
+  客户端 1: 本地损失 = 0.1711
+Client 2 - Epochs 1 - Avg Loss: 0.2450 | Cls: 0.2352, KSD: 0.972931, SM: 0.251274
+  客户端 2: 本地损失 = 0.2450
+Client 3 - Epochs 1 - Avg Loss: 0.2660 | Cls: 0.2564, KSD: 0.961644, SM: 0.250126
+  客户端 3: 本地损失 = 0.2660
+Client 4 - Epochs 1 - Avg Loss: 0.1659 | Cls: 0.1560, KSD: 0.996019, SM: 0.250886
+  客户端 4: 本地损失 = 0.1659
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8819
+    -> IN-C Acc: 0.8704
+    -> Near AUROC: 0.7556
+    -> Far AUROC: 0.8429
+  [Result] ID Acc: 0.8819
+  [Result] Tail Acc: 0.6899
+  [Result] Hier Error: 0.0543 (Lower is better)
+  [Result] Hier Score: 0.9891 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8704
+  [Result] Near AUROC: 0.7556
+  [Result] Far AUROC: 0.8429
+检查点已保存: round_30.pth
+
+=== 通信轮次 31/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+  [Auto-Weight] Round 30: Alpha=1.0000 | KSD_w=0.010000
+Client 0 - Epochs 1 - Avg Loss: 0.0973 | Cls: 0.0891, KSD: 0.819316, SM: 0.263130
+  客户端 0: 本地损失 = 0.0973
+  [Auto-Weight] Round 30: Alpha=1.0000 | KSD_w=0.010000
+Client 1 - Epochs 1 - Avg Loss: 0.1628 | Cls: 0.1535, KSD: 0.926386, SM: 0.249896
+  客户端 1: 本地损失 = 0.1628
+  [Auto-Weight] Round 30: Alpha=1.0000 | KSD_w=0.010000
+Client 2 - Epochs 1 - Avg Loss: 0.2013 | Cls: 0.1915, KSD: 0.977581, SM: 0.251466
+  客户端 2: 本地损失 = 0.2013
+  [Auto-Weight] Round 30: Alpha=1.0000 | KSD_w=0.010000
+Client 3 - Epochs 1 - Avg Loss: 0.2837 | Cls: 0.2742, KSD: 0.944801, SM: 0.250442
+  客户端 3: 本地损失 = 0.2837
+  [Auto-Weight] Round 30: Alpha=1.0000 | KSD_w=0.010000
+Client 4 - Epochs 1 - Avg Loss: 0.1863 | Cls: 0.1763, KSD: 1.000317, SM: 0.249916
+  客户端 4: 本地损失 = 0.1863
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8833
+    -> IN-C Acc: 0.8744
+    -> Near AUROC: 0.7627
+    -> Far AUROC: 0.8580
+  [Result] ID Acc: 0.8833
+  [Result] Tail Acc: 0.6788
+  [Result] Hier Error: 0.0512 (Lower is better)
+  [Result] Hier Score: 0.9898 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8744
+  [Result] Near AUROC: 0.7627
+  [Result] Far AUROC: 0.8580
+
+=== 通信轮次 32/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1001 | Cls: 0.0920, KSD: 0.804826, SM: 0.262941
+  客户端 0: 本地损失 = 0.1001
+Client 1 - Epochs 1 - Avg Loss: 0.1592 | Cls: 0.1498, KSD: 0.936496, SM: 0.249885
+  客户端 1: 本地损失 = 0.1592
+Client 2 - Epochs 1 - Avg Loss: 0.1949 | Cls: 0.1850, KSD: 0.985547, SM: 0.251143
+  客户端 2: 本地损失 = 0.1949
+Client 3 - Epochs 1 - Avg Loss: 0.2540 | Cls: 0.2445, KSD: 0.949614, SM: 0.251238
+  客户端 3: 本地损失 = 0.2540
+Client 4 - Epochs 1 - Avg Loss: 0.1649 | Cls: 0.1552, KSD: 0.971109, SM: 0.251626
+  客户端 4: 本地损失 = 0.1649
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8867
+    -> IN-C Acc: 0.8761
+    -> Near AUROC: 0.7619
+    -> Far AUROC: 0.8347
+  [Result] ID Acc: 0.8867
+  [Result] Tail Acc: 0.6788
+  [Result] Hier Error: 0.0515 (Lower is better)
+  [Result] Hier Score: 0.9897 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8761
+  [Result] Near AUROC: 0.7619
+  [Result] Far AUROC: 0.8347
+
+=== 通信轮次 33/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0902 | Cls: 0.0821, KSD: 0.807094, SM: 0.263036
+  客户端 0: 本地损失 = 0.0902
+Client 1 - Epochs 1 - Avg Loss: 0.1514 | Cls: 0.1422, KSD: 0.920543, SM: 0.249201
+  客户端 1: 本地损失 = 0.1514
+Client 2 - Epochs 1 - Avg Loss: 0.2017 | Cls: 0.1923, KSD: 0.945736, SM: 0.252667
+  客户端 2: 本地损失 = 0.2017
+Client 3 - Epochs 1 - Avg Loss: 0.2761 | Cls: 0.2669, KSD: 0.924903, SM: 0.250523
+  客户端 3: 本地损失 = 0.2761
+Client 4 - Epochs 1 - Avg Loss: 0.1671 | Cls: 0.1575, KSD: 0.960056, SM: 0.251545
+  客户端 4: 本地损失 = 0.1671
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9006
+    -> IN-C Acc: 0.8976
+    -> Near AUROC: 0.7887
+    -> Far AUROC: 0.8370
+  [Result] ID Acc: 0.9006
+  [Result] Tail Acc: 0.7291
+  [Result] Hier Error: 0.0460 (Lower is better)
+  [Result] Hier Score: 0.9908 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8976
+  [Result] Near AUROC: 0.7887
+  [Result] Far AUROC: 0.8370
+  ★ 新最优模型 (Acc: 0.9006) 已保存
+
+=== 通信轮次 34/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.1090 | Cls: 0.1011, KSD: 0.791180, SM: 0.263211
+  客户端 0: 本地损失 = 0.1090
+Client 1 - Epochs 1 - Avg Loss: 0.1599 | Cls: 0.1507, KSD: 0.922262, SM: 0.249349
+  客户端 1: 本地损失 = 0.1599
+Client 2 - Epochs 1 - Avg Loss: 0.2003 | Cls: 0.1908, KSD: 0.947294, SM: 0.251646
+  客户端 2: 本地损失 = 0.2003
+Client 3 - Epochs 1 - Avg Loss: 0.2303 | Cls: 0.2210, KSD: 0.938250, SM: 0.250591
+  客户端 3: 本地损失 = 0.2303
+Client 4 - Epochs 1 - Avg Loss: 0.1586 | Cls: 0.1489, KSD: 0.977269, SM: 0.250763
+  客户端 4: 本地损失 = 0.1586
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8761
+    -> IN-C Acc: 0.8659
+    -> Near AUROC: 0.7908
+    -> Far AUROC: 0.8697
+  [Result] ID Acc: 0.8761
+  [Result] Tail Acc: 0.6760
+  [Result] Hier Error: 0.0525 (Lower is better)
+  [Result] Hier Score: 0.9895 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8659
+  [Result] Near AUROC: 0.7908
+  [Result] Far AUROC: 0.8697
+
+=== 通信轮次 35/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0851 | Cls: 0.0771, KSD: 0.797622, SM: 0.262758
+  客户端 0: 本地损失 = 0.0851
+Client 1 - Epochs 1 - Avg Loss: 0.1527 | Cls: 0.1437, KSD: 0.898518, SM: 0.249926
+  客户端 1: 本地损失 = 0.1527
+Client 2 - Epochs 1 - Avg Loss: 0.1912 | Cls: 0.1814, KSD: 0.978270, SM: 0.250931
+  客户端 2: 本地损失 = 0.1912
+Client 3 - Epochs 1 - Avg Loss: 0.2494 | Cls: 0.2401, KSD: 0.935097, SM: 0.250348
+  客户端 3: 本地损失 = 0.2494
+Client 4 - Epochs 1 - Avg Loss: 0.1607 | Cls: 0.1510, KSD: 0.974796, SM: 0.250874
+  客户端 4: 本地损失 = 0.1607
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8942
+    -> IN-C Acc: 0.8853
+    -> Near AUROC: 0.7626
+    -> Far AUROC: 0.8409
+  [Result] ID Acc: 0.8942
+  [Result] Tail Acc: 0.7151
+  [Result] Hier Error: 0.0469 (Lower is better)
+  [Result] Hier Score: 0.9906 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8853
+  [Result] Near AUROC: 0.7626
+  [Result] Far AUROC: 0.8409
+
+=== 通信轮次 36/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+  [Auto-Weight] Round 35: Alpha=1.0000 | KSD_w=0.010000
+Client 0 - Epochs 1 - Avg Loss: 0.1017 | Cls: 0.0938, KSD: 0.786961, SM: 0.262208
+  客户端 0: 本地损失 = 0.1017
+  [Auto-Weight] Round 35: Alpha=1.0000 | KSD_w=0.010000
+Client 1 - Epochs 1 - Avg Loss: 0.1342 | Cls: 0.1253, KSD: 0.894229, SM: 0.250800
+  客户端 1: 本地损失 = 0.1342
+  [Auto-Weight] Round 35: Alpha=1.0000 | KSD_w=0.010000
+Client 2 - Epochs 1 - Avg Loss: 0.2235 | Cls: 0.2142, KSD: 0.927813, SM: 0.251957
+  客户端 2: 本地损失 = 0.2235
+  [Auto-Weight] Round 35: Alpha=1.0000 | KSD_w=0.010000
+Client 3 - Epochs 1 - Avg Loss: 0.2254 | Cls: 0.2159, KSD: 0.950456, SM: 0.250618
+  客户端 3: 本地损失 = 0.2254
+  [Auto-Weight] Round 35: Alpha=1.0000 | KSD_w=0.010000
+Client 4 - Epochs 1 - Avg Loss: 0.1486 | Cls: 0.1392, KSD: 0.945329, SM: 0.251271
+  客户端 4: 本地损失 = 0.1486
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8932
+    -> IN-C Acc: 0.8908
+    -> Near AUROC: 0.7573
+    -> Far AUROC: 0.8532
+  [Result] ID Acc: 0.8932
+  [Result] Tail Acc: 0.6816
+  [Result] Hier Error: 0.0495 (Lower is better)
+  [Result] Hier Score: 0.9901 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8908
+  [Result] Near AUROC: 0.7573
+  [Result] Far AUROC: 0.8532
+
+=== 通信轮次 37/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0847 | Cls: 0.0769, KSD: 0.781056, SM: 0.262627
+  客户端 0: 本地损失 = 0.0847
+Client 1 - Epochs 1 - Avg Loss: 0.1626 | Cls: 0.1538, KSD: 0.885440, SM: 0.250194
+  客户端 1: 本地损失 = 0.1626
+Client 2 - Epochs 1 - Avg Loss: 0.1817 | Cls: 0.1723, KSD: 0.940840, SM: 0.251451
+  客户端 2: 本地损失 = 0.1817
+Client 3 - Epochs 1 - Avg Loss: 0.2511 | Cls: 0.2418, KSD: 0.931332, SM: 0.250625
+  客户端 3: 本地损失 = 0.2511
+Client 4 - Epochs 1 - Avg Loss: 0.1443 | Cls: 0.1345, KSD: 0.975663, SM: 0.251303
+  客户端 4: 本地损失 = 0.1443
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8993
+    -> IN-C Acc: 0.8847
+    -> Near AUROC: 0.7996
+    -> Far AUROC: 0.8495
+  [Result] ID Acc: 0.8993
+  [Result] Tail Acc: 0.7235
+  [Result] Hier Error: 0.0456 (Lower is better)
+  [Result] Hier Score: 0.9909 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8847
+  [Result] Near AUROC: 0.7996
+  [Result] Far AUROC: 0.8495
+
+=== 通信轮次 38/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0787 | Cls: 0.0709, KSD: 0.784923, SM: 0.263073
+  客户端 0: 本地损失 = 0.0787
+Client 1 - Epochs 1 - Avg Loss: 0.1435 | Cls: 0.1347, KSD: 0.872129, SM: 0.249580
+  客户端 1: 本地损失 = 0.1435
+Client 2 - Epochs 1 - Avg Loss: 0.1785 | Cls: 0.1693, KSD: 0.919690, SM: 0.251677
+  客户端 2: 本地损失 = 0.1785
+Client 3 - Epochs 1 - Avg Loss: 0.2269 | Cls: 0.2174, KSD: 0.953482, SM: 0.250152
+  客户端 3: 本地损失 = 0.2269
+Client 4 - Epochs 1 - Avg Loss: 0.1529 | Cls: 0.1437, KSD: 0.920865, SM: 0.250668
+  客户端 4: 本地损失 = 0.1529
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9047
+    -> IN-C Acc: 0.8898
+    -> Near AUROC: 0.7786
+    -> Far AUROC: 0.8429
+  [Result] ID Acc: 0.9047
+  [Result] Tail Acc: 0.7263
+  [Result] Hier Error: 0.0440 (Lower is better)
+  [Result] Hier Score: 0.9912 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8898
+  [Result] Near AUROC: 0.7786
+  [Result] Far AUROC: 0.8429
+  ★ 新最优模型 (Acc: 0.9047) 已保存
+
+=== 通信轮次 39/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0824 | Cls: 0.0746, KSD: 0.783227, SM: 0.262790
+  客户端 0: 本地损失 = 0.0824
+Client 1 - Epochs 1 - Avg Loss: 0.1466 | Cls: 0.1378, KSD: 0.876310, SM: 0.249966
+  客户端 1: 本地损失 = 0.1466
+Client 2 - Epochs 1 - Avg Loss: 0.1636 | Cls: 0.1543, KSD: 0.931006, SM: 0.251908
+  客户端 2: 本地损失 = 0.1636
+Client 3 - Epochs 1 - Avg Loss: 0.2388 | Cls: 0.2296, KSD: 0.921706, SM: 0.250607
+  客户端 3: 本地损失 = 0.2388
+Client 4 - Epochs 1 - Avg Loss: 0.1408 | Cls: 0.1314, KSD: 0.939669, SM: 0.251713
+  客户端 4: 本地损失 = 0.1408
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9027
+    -> IN-C Acc: 0.8959
+    -> Near AUROC: 0.7732
+    -> Far AUROC: 0.8403
+  [Result] ID Acc: 0.9027
+  [Result] Tail Acc: 0.7179
+  [Result] Hier Error: 0.0429 (Lower is better)
+  [Result] Hier Score: 0.9914 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8959
+  [Result] Near AUROC: 0.7732
+  [Result] Far AUROC: 0.8403
+
+=== 通信轮次 40/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0796 | Cls: 0.0720, KSD: 0.765359, SM: 0.263439
+  客户端 0: 本地损失 = 0.0796
+Client 1 - Epochs 1 - Avg Loss: 0.1420 | Cls: 0.1332, KSD: 0.880679, SM: 0.249919
+  客户端 1: 本地损失 = 0.1420
+Client 2 - Epochs 1 - Avg Loss: 0.1625 | Cls: 0.1534, KSD: 0.916298, SM: 0.252042
+  客户端 2: 本地损失 = 0.1625
+Client 3 - Epochs 1 - Avg Loss: 0.2266 | Cls: 0.2177, KSD: 0.881850, SM: 0.250853
+  客户端 3: 本地损失 = 0.2266
+Client 4 - Epochs 1 - Avg Loss: 0.1162 | Cls: 0.1068, KSD: 0.941690, SM: 0.252626
+  客户端 4: 本地损失 = 0.1162
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9102
+    -> IN-C Acc: 0.9003
+    -> Near AUROC: 0.7779
+    -> Far AUROC: 0.8557
+  [Result] ID Acc: 0.9102
+  [Result] Tail Acc: 0.7235
+  [Result] Hier Error: 0.0413 (Lower is better)
+  [Result] Hier Score: 0.9917 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.9003
+  [Result] Near AUROC: 0.7779
+  [Result] Far AUROC: 0.8557
+  ★ 新最优模型 (Acc: 0.9102) 已保存
+检查点已保存: round_40.pth
+
+=== 通信轮次 41/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+  [Auto-Weight] Round 40: Alpha=1.0000 | KSD_w=0.010000
+Client 0 - Epochs 1 - Avg Loss: 0.0830 | Cls: 0.0753, KSD: 0.771707, SM: 0.263694
+  客户端 0: 本地损失 = 0.0830
+  [Auto-Weight] Round 40: Alpha=1.0000 | KSD_w=0.010000
+Client 1 - Epochs 1 - Avg Loss: 0.1222 | Cls: 0.1135, KSD: 0.879117, SM: 0.250200
+  客户端 1: 本地损失 = 0.1222
+  [Auto-Weight] Round 40: Alpha=1.0000 | KSD_w=0.010000
+Client 2 - Epochs 1 - Avg Loss: 0.1747 | Cls: 0.1656, KSD: 0.914903, SM: 0.252485
+  客户端 2: 本地损失 = 0.1747
+  [Auto-Weight] Round 40: Alpha=1.0000 | KSD_w=0.010000
+Client 3 - Epochs 1 - Avg Loss: 0.2082 | Cls: 0.1989, KSD: 0.925505, SM: 0.251425
+  客户端 3: 本地损失 = 0.2082
+  [Auto-Weight] Round 40: Alpha=1.0000 | KSD_w=0.010000
+Client 4 - Epochs 1 - Avg Loss: 0.1281 | Cls: 0.1189, KSD: 0.923781, SM: 0.252516
+  客户端 4: 本地损失 = 0.1281
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.8955
+    -> IN-C Acc: 0.8826
+    -> Near AUROC: 0.7985
+    -> Far AUROC: 0.8505
+  [Result] ID Acc: 0.8955
+  [Result] Tail Acc: 0.7402
+  [Result] Hier Error: 0.0442 (Lower is better)
+  [Result] Hier Score: 0.9912 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8826
+  [Result] Near AUROC: 0.7985
+  [Result] Far AUROC: 0.8505
+
+=== 通信轮次 42/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0827 | Cls: 0.0749, KSD: 0.773612, SM: 0.263598
+  客户端 0: 本地损失 = 0.0827
+Client 1 - Epochs 1 - Avg Loss: 0.1239 | Cls: 0.1152, KSD: 0.873047, SM: 0.250353
+  客户端 1: 本地损失 = 0.1239
+Client 2 - Epochs 1 - Avg Loss: 0.1620 | Cls: 0.1526, KSD: 0.940149, SM: 0.252097
+  客户端 2: 本地损失 = 0.1620
+Client 3 - Epochs 1 - Avg Loss: 0.2036 | Cls: 0.1945, KSD: 0.904901, SM: 0.251102
+  客户端 3: 本地损失 = 0.2036
+Client 4 - Epochs 1 - Avg Loss: 0.1407 | Cls: 0.1312, KSD: 0.949558, SM: 0.252534
+  客户端 4: 本地损失 = 0.1407
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9020
+    -> IN-C Acc: 0.8989
+    -> Near AUROC: 0.7740
+    -> Far AUROC: 0.8478
+  [Result] ID Acc: 0.9020
+  [Result] Tail Acc: 0.7263
+  [Result] Hier Error: 0.0435 (Lower is better)
+  [Result] Hier Score: 0.9913 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8989
+  [Result] Near AUROC: 0.7740
+  [Result] Far AUROC: 0.8478
+
+=== 通信轮次 43/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0719 | Cls: 0.0643, KSD: 0.757017, SM: 0.263254
+  客户端 0: 本地损失 = 0.0719
+Client 1 - Epochs 1 - Avg Loss: 0.1252 | Cls: 0.1167, KSD: 0.847084, SM: 0.250456
+  客户端 1: 本地损失 = 0.1252
+Client 2 - Epochs 1 - Avg Loss: 0.1715 | Cls: 0.1625, KSD: 0.898466, SM: 0.251615
+  客户端 2: 本地损失 = 0.1715
+Client 3 - Epochs 1 - Avg Loss: 0.2144 | Cls: 0.2055, KSD: 0.893718, SM: 0.251410
+  客户端 3: 本地损失 = 0.2144
+Client 4 - Epochs 1 - Avg Loss: 0.1330 | Cls: 0.1236, KSD: 0.936273, SM: 0.250756
+  客户端 4: 本地损失 = 0.1330
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9081
+    -> IN-C Acc: 0.8962
+    -> Near AUROC: 0.7804
+    -> Far AUROC: 0.8608
+  [Result] ID Acc: 0.9081
+  [Result] Tail Acc: 0.7570
+  [Result] Hier Error: 0.0397 (Lower is better)
+  [Result] Hier Score: 0.9921 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8962
+  [Result] Near AUROC: 0.7804
+  [Result] Far AUROC: 0.8608
+
+=== 通信轮次 44/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0700 | Cls: 0.0623, KSD: 0.766016, SM: 0.262860
+  客户端 0: 本地损失 = 0.0700
+Client 1 - Epochs 1 - Avg Loss: 0.1202 | Cls: 0.1116, KSD: 0.863546, SM: 0.249947
+  客户端 1: 本地损失 = 0.1202
+Client 2 - Epochs 1 - Avg Loss: 0.1736 | Cls: 0.1646, KSD: 0.905240, SM: 0.250526
+  客户端 2: 本地损失 = 0.1736
+Client 3 - Epochs 1 - Avg Loss: 0.2017 | Cls: 0.1927, KSD: 0.894123, SM: 0.250828
+  客户端 3: 本地损失 = 0.2017
+Client 4 - Epochs 1 - Avg Loss: 0.1252 | Cls: 0.1160, KSD: 0.921441, SM: 0.252126
+  客户端 4: 本地损失 = 0.1252
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9095
+    -> IN-C Acc: 0.8952
+    -> Near AUROC: 0.7591
+    -> Far AUROC: 0.8326
+  [Result] ID Acc: 0.9095
+  [Result] Tail Acc: 0.7374
+  [Result] Hier Error: 0.0392 (Lower is better)
+  [Result] Hier Score: 0.9922 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8952
+  [Result] Near AUROC: 0.7591
+  [Result] Far AUROC: 0.8326
+
+=== 通信轮次 45/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0717 | Cls: 0.0640, KSD: 0.766262, SM: 0.262796
+  客户端 0: 本地损失 = 0.0717
+Client 1 - Epochs 1 - Avg Loss: 0.1131 | Cls: 0.1045, KSD: 0.857455, SM: 0.250291
+  客户端 1: 本地损失 = 0.1131
+Client 2 - Epochs 1 - Avg Loss: 0.1559 | Cls: 0.1469, KSD: 0.903663, SM: 0.251447
+  客户端 2: 本地损失 = 0.1559
+Client 3 - Epochs 1 - Avg Loss: 0.1885 | Cls: 0.1796, KSD: 0.887572, SM: 0.250605
+  客户端 3: 本地损失 = 0.1885
+Client 4 - Epochs 1 - Avg Loss: 0.1236 | Cls: 0.1146, KSD: 0.898454, SM: 0.251076
+  客户端 4: 本地损失 = 0.1236
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9047
+    -> IN-C Acc: 0.9034
+    -> Near AUROC: 0.7944
+    -> Far AUROC: 0.8473
+  [Result] ID Acc: 0.9047
+  [Result] Tail Acc: 0.7542
+  [Result] Hier Error: 0.0407 (Lower is better)
+  [Result] Hier Score: 0.9919 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.9034
+  [Result] Near AUROC: 0.7944
+  [Result] Far AUROC: 0.8473
+
+=== 通信轮次 46/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+  [Auto-Weight] Round 45: Alpha=1.0000 | KSD_w=0.010000
+Client 0 - Epochs 1 - Avg Loss: 0.0840 | Cls: 0.0765, KSD: 0.750329, SM: 0.263111
+  客户端 0: 本地损失 = 0.0840
+  [Auto-Weight] Round 45: Alpha=1.0000 | KSD_w=0.010000
+Client 1 - Epochs 1 - Avg Loss: 0.1218 | Cls: 0.1134, KSD: 0.841482, SM: 0.250938
+  客户端 1: 本地损失 = 0.1218
+  [Auto-Weight] Round 45: Alpha=1.0000 | KSD_w=0.010000
+Client 2 - Epochs 1 - Avg Loss: 0.1529 | Cls: 0.1439, KSD: 0.903039, SM: 0.250493
+  客户端 2: 本地损失 = 0.1529
+  [Auto-Weight] Round 45: Alpha=1.0000 | KSD_w=0.010000
+Client 3 - Epochs 1 - Avg Loss: 0.1823 | Cls: 0.1735, KSD: 0.873886, SM: 0.250961
+  客户端 3: 本地损失 = 0.1823
+  [Auto-Weight] Round 45: Alpha=1.0000 | KSD_w=0.010000
+Client 4 - Epochs 1 - Avg Loss: 0.1081 | Cls: 0.0990, KSD: 0.910714, SM: 0.251928
+  客户端 4: 本地损失 = 0.1081
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9051
+    -> IN-C Acc: 0.8986
+    -> Near AUROC: 0.7560
+    -> Far AUROC: 0.8610
+  [Result] ID Acc: 0.9051
+  [Result] Tail Acc: 0.7374
+  [Result] Hier Error: 0.0412 (Lower is better)
+  [Result] Hier Score: 0.9918 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8986
+  [Result] Near AUROC: 0.7560
+  [Result] Far AUROC: 0.8610
+
+=== 通信轮次 47/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0676 | Cls: 0.0599, KSD: 0.762334, SM: 0.262015
+  客户端 0: 本地损失 = 0.0676
+Client 1 - Epochs 1 - Avg Loss: 0.0937 | Cls: 0.0850, KSD: 0.865527, SM: 0.250210
+  客户端 1: 本地损失 = 0.0937
+Client 2 - Epochs 1 - Avg Loss: 0.1507 | Cls: 0.1418, KSD: 0.892297, SM: 0.251186
+  客户端 2: 本地损失 = 0.1507
+Client 3 - Epochs 1 - Avg Loss: 0.1902 | Cls: 0.1814, KSD: 0.877581, SM: 0.250651
+  客户端 3: 本地损失 = 0.1902
+Client 4 - Epochs 1 - Avg Loss: 0.1250 | Cls: 0.1160, KSD: 0.895040, SM: 0.252557
+  客户端 4: 本地损失 = 0.1250
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9126
+    -> IN-C Acc: 0.9078
+    -> Near AUROC: 0.7643
+    -> Far AUROC: 0.8379
+  [Result] ID Acc: 0.9126
+  [Result] Tail Acc: 0.7793
+  [Result] Hier Error: 0.0395 (Lower is better)
+  [Result] Hier Score: 0.9921 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.9078
+  [Result] Near AUROC: 0.7643
+  [Result] Far AUROC: 0.8379
+  ★ 新最优模型 (Acc: 0.9126) 已保存
+
+=== 通信轮次 48/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0564 | Cls: 0.0489, KSD: 0.748695, SM: 0.263939
+  客户端 0: 本地损失 = 0.0564
+Client 1 - Epochs 1 - Avg Loss: 0.1216 | Cls: 0.1131, KSD: 0.847261, SM: 0.250197
+  客户端 1: 本地损失 = 0.1216
+Client 2 - Epochs 1 - Avg Loss: 0.1745 | Cls: 0.1657, KSD: 0.888503, SM: 0.251012
+  客户端 2: 本地损失 = 0.1745
+Client 3 - Epochs 1 - Avg Loss: 0.1861 | Cls: 0.1774, KSD: 0.878438, SM: 0.251085
+  客户端 3: 本地损失 = 0.1861
+Client 4 - Epochs 1 - Avg Loss: 0.1121 | Cls: 0.1030, KSD: 0.907567, SM: 0.252751
+  客户端 4: 本地损失 = 0.1121
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9051
+    -> IN-C Acc: 0.8945
+    -> Near AUROC: 0.7649
+    -> Far AUROC: 0.8463
+  [Result] ID Acc: 0.9051
+  [Result] Tail Acc: 0.7598
+  [Result] Hier Error: 0.0410 (Lower is better)
+  [Result] Hier Score: 0.9918 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.8945
+  [Result] Near AUROC: 0.7649
+  [Result] Far AUROC: 0.8463
+
+=== 通信轮次 49/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0609 | Cls: 0.0534, KSD: 0.753792, SM: 0.263159
+  客户端 0: 本地损失 = 0.0609
+Client 1 - Epochs 1 - Avg Loss: 0.1052 | Cls: 0.0967, KSD: 0.847368, SM: 0.250206
+  客户端 1: 本地损失 = 0.1052
+Client 2 - Epochs 1 - Avg Loss: 0.1439 | Cls: 0.1348, KSD: 0.909624, SM: 0.251416
+  客户端 2: 本地损失 = 0.1439
+Client 3 - Epochs 1 - Avg Loss: 0.1786 | Cls: 0.1700, KSD: 0.865190, SM: 0.250874
+  客户端 3: 本地损失 = 0.1786
+Client 4 - Epochs 1 - Avg Loss: 0.1281 | Cls: 0.1190, KSD: 0.908558, SM: 0.251212
+  客户端 4: 本地损失 = 0.1281
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9149
+    -> IN-C Acc: 0.9027
+    -> Near AUROC: 0.7594
+    -> Far AUROC: 0.8555
+  [Result] ID Acc: 0.9149
+  [Result] Tail Acc: 0.7598
+  [Result] Hier Error: 0.0369 (Lower is better)
+  [Result] Hier Score: 0.9926 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.9027
+  [Result] Near AUROC: 0.7594
+  [Result] Far AUROC: 0.8555
+  ★ 新最优模型 (Acc: 0.9149) 已保存
+
+=== 通信轮次 50/50 ===
+选择的客户端: [0, 1, 2, 3, 4]
+Client 0 - Epochs 1 - Avg Loss: 0.0647 | Cls: 0.0573, KSD: 0.742602, SM: 0.262530
+  客户端 0: 本地损失 = 0.0647
+Client 1 - Epochs 1 - Avg Loss: 0.1195 | Cls: 0.1112, KSD: 0.823342, SM: 0.250840
+  客户端 1: 本地损失 = 0.1195
+Client 2 - Epochs 1 - Avg Loss: 0.1358 | Cls: 0.1270, KSD: 0.879947, SM: 0.251183
+  客户端 2: 本地损失 = 0.1358
+Client 3 - Epochs 1 - Avg Loss: 0.1759 | Cls: 0.1672, KSD: 0.869891, SM: 0.251086
+  客户端 3: 本地损失 = 0.1759
+Client 4 - Epochs 1 - Avg Loss: 0.1069 | Cls: 0.0977, KSD: 0.912425, SM: 0.251996
+  客户端 4: 本地损失 = 0.1069
+  [Server] Updated Global Model with 729 params
+  [Server] Updated FOOGD Module with 8 params
+
+>>> 开始评估模型指标 <<<
+评估模式: FedAvg (Global Model 承担所有任务)
+  正在评估 Global Model (优化版)...
+    -> ID Acc: 0.9149
+    -> IN-C Acc: 0.9051
+    -> Near AUROC: 0.7877
+    -> Far AUROC: 0.8494
+  [Result] ID Acc: 0.9149
+  [Result] Tail Acc: 0.7737
+  [Result] Hier Error: 0.0370 (Lower is better)
+  [Result] Hier Score: 0.9926 (Ratio: 0~1)
+  [Result] IN-C Acc: 0.9051
+  [Result] Near AUROC: 0.7877
+  [Result] Far AUROC: 0.8494
+检查点已保存: round_50.pth
+
+联邦学习训练完成!
+最终模型已保存: ./experiments_alpha0.1/fedavg_foogd_with_taxonomy/experiment_20251218_235948/final_model.pth
+训练历史已保存: ./experiments_alpha0.1/fedavg_foogd_with_taxonomy/experiment_20251218_235948/training_history.json
+训练曲线图已保存: ./experiments_alpha0.1/fedavg_foogd_with_taxonomy/experiment_20251218_235948/training_curves.png
+
+正在准备生成详细评估报告...
+★ 正在加载历史最优模型进行评估: ./experiments_alpha0.1/fedavg_foogd_with_taxonomy/experiment_20251218_235948/best_model.pth
+  正在恢复客户端个性化状态...
+  已恢复到第 49 轮的状态 (Best Acc: 0.9149)
+正在生成详细评估报告(混淆矩阵 & OOD 分类图)...
+评估ID分类性能...
+评估Near-OOD检测性能...
+评估Far-OOD检测性能...
+Traceback (most recent call last):
+  File "/home/dell7960/桌面/FedRoD/pFL-FOOGD-Plankton-master-main/train_federated.py", line 823, in <module>
+    main()
+  File "/home/dell7960/桌面/FedRoD/pFL-FOOGD-Plankton-master-main/train_federated.py", line 745, in main
+    training_history = federated_training(args)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dell7960/桌面/FedRoD/pFL-FOOGD-Plankton-master-main/train_federated.py", line 617, in federated_training
+    generate_evaluation_report(
+  File "/home/dell7960/桌面/FedRoD/pFL-FOOGD-Plankton-master-main/eval_utils.py", line 554, in generate_evaluation_report
+    json.dump(serializable_report, f, indent=2)
+  File "/home/dell7960/anaconda3/lib/python3.11/json/__init__.py", line 179, in dump
+    for chunk in iterable:
+  File "/home/dell7960/anaconda3/lib/python3.11/json/encoder.py", line 432, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "/home/dell7960/anaconda3/lib/python3.11/json/encoder.py", line 406, in _iterencode_dict
+    yield from chunks
+  File "/home/dell7960/anaconda3/lib/python3.11/json/encoder.py", line 406, in _iterencode_dict
+    yield from chunks
+  File "/home/dell7960/anaconda3/lib/python3.11/json/encoder.py", line 406, in _iterencode_dict
+    yield from chunks
+  File "/home/dell7960/anaconda3/lib/python3.11/json/encoder.py", line 439, in _iterencode
+    o = _default(o)
+        ^^^^^^^^^^^
+  File "/home/dell7960/anaconda3/lib/python3.11/json/encoder.py", line 180, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+TypeError: Object of type int64 is not JSON serializable
